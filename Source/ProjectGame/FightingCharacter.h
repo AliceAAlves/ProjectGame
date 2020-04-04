@@ -49,6 +49,12 @@ public:
 	/**** Flags ****/
 	UPROPERTY(BlueprintReadOnly, Category = Attack)
 		bool IsAttacking;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanAddNextComboAttack = true;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanMove = true;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanAttack = true;
 	UPROPERTY(BlueprintReadWrite, Category = Reaction)
 		TEnumAsByte <ReactType> Reaction = ReactType::NoReact;
 
@@ -71,6 +77,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Attack)
 		int GetNextComboMontageKey();
+
+	UFUNCTION(BlueprintCallable, Category = Attack)
+		void ClearComboSequence();
 
 
 	/******************* Collision Boxes ************************/
@@ -176,6 +185,7 @@ protected:
 	bool bAttack1;
 	bool bAttack2;
 	std::vector<int> ComboSequence;
+	int nextComboIndex;
 
 public:	
 	// Called every frame
