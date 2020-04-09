@@ -58,6 +58,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = Reaction)
 		TEnumAsByte <ReactType> Reaction = ReactType::NoReact;
 
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		FString ComboSequenceStr = TEXT("");
 
 	void MoveForward(float Axis);
 	void MoveRight(float Axis);
@@ -74,9 +76,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Animation)
 		FVector GetTargetSocketLocation(FString MontageName);
-
-	UFUNCTION(BlueprintCallable, Category = Attack)
-		int GetNextComboMontageKey();
 
 	UFUNCTION(BlueprintCallable, Category = Attack)
 		void ClearComboSequence();
@@ -184,8 +183,6 @@ protected:
 
 	bool bAttack1;
 	bool bAttack2;
-	std::vector<int> ComboSequence;
-	int nextComboIndex;
 
 public:	
 	// Called every frame

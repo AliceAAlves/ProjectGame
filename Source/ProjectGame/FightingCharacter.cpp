@@ -45,6 +45,8 @@ void AFightingCharacter::BeginPlay()
 {
 	Super::BeginPlay(); 
 
+	AddControllerYawInput(-15);
+
 	AttachCollisionBoxesToSockets();
 
 	for (UBoxComponent* weapon : WeaponCollisionBoxes) {
@@ -107,12 +109,13 @@ void AFightingCharacter::MoveRight(float Axis)
 
 void AFightingCharacter::Attack1()
 {
-	if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("can add"));
-	else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("canNOT add"));
+	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("can add"));
+	//else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("canNOT add"));
 	if (!bDefeated && CanAttack) {
 		if (!bAttack1) {
 			if (CanAddNextComboAttack) {
-				ComboSequence.push_back(0);
+				ComboSequenceStr += TEXT("1");
+				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
 				CanAddNextComboAttack = false;
 			}
 			bAttack1 = true;
@@ -132,7 +135,7 @@ void AFightingCharacter::Attack2()
 	if (!bDefeated && CanAttack) {
 		if (!bAttack2) {
 			if (CanAddNextComboAttack) { 
-				ComboSequence.push_back(1);
+				ComboSequenceStr += TEXT("2");
 				CanAddNextComboAttack = false;
 			}
 			bAttack2 = true;
@@ -269,7 +272,7 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 			if (cosAngle > 0.75) {
 				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("diatance: %f"), distance));
 				TargetLocation = SocketLocation;
-				GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("TargetLocation.Z: %f"), TargetLocation.Z));
+				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("TargetLocation.Z: %f"), TargetLocation.Z));
 				
 			}
 		}
@@ -278,60 +281,12 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 	return TargetLocation;
 }
 
-int AFightingCharacter::GetNextComboMontageKey()
-{
-	// Check Blueprint ComboMontagesMapping variable to check what each int key maps to each AnimMontage
-	// X represents Attack 1 ; V represents Attack 2
-	int key = -1;
-	//nextComboIndex++;
-
-	if (!ComboSequence.empty()) {
-		int length = ComboSequence.size();
-		//if (nextComboIndex > ComboSequence.size()) return key;
-		if (ComboSequence.at(0) == 0) { 
-			// X
-			if (length == 1) key = 0;
-			else {
-				if (ComboSequence.at(1) == 0) {
-					// X X
-					if (length == 2) key = 1;
-					else {
-						if (ComboSequence.at(2) == 0) {
-							// X X X
-							if (length == 3) { key = 2; ClearComboSequence(); } // end of sequence
-						}
-						else if (ComboSequence.at(2) == 1) {
-							// X X V
-							if (length == 3) { key = 3; ClearComboSequence(); } // end of sequence
-						}
-					}
-				}
-				else if (ComboSequence.at(1) == 1) {
-					// X V
-					if (length == 2) { key = 3; ClearComboSequence(); } // end of sequence
-					/*else {
-						if (ComboSequence.at(2) == 1) {
-							// X X X
-							if (length == 3) { key = 2; ClearComboSequence(); } // end of sequence
-						}
-					}*/
-				}
-			}
-		} 
-		else if (ComboSequence.at(0) == 1) {
-			// V
-			if (length == 1) { key = 2; ClearComboSequence(); } // end of sequence
-		}
-	}
-	
-	return key;
-}
 
 void AFightingCharacter::ClearComboSequence()
 {
-	ComboSequence.clear();
-	//nextComboIndex = 0;
-	//CanAddNextComboAttack = true;
+	ComboSequenceStr = TEXT("");
+	CanAddNextComboAttack = true;
+	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Orange, TEXT("CLEARED"));
 }
 
 
