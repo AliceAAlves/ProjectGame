@@ -280,7 +280,8 @@ float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 	float max_accel = 120;
 	float anim_accel = 100;
 	
-	float actual_speed = GetVelocity().Size();
+	FVector velocity = FVector(GetVelocity().X, GetVelocity().Y, 0.0f);
+	float actual_speed = velocity.Size();
 	float accel = (actual_speed - speedForAnimation)/delta_time;
 
 	if (abs(accel) > max_accel) {
