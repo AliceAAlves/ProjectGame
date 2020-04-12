@@ -49,12 +49,16 @@ public:
 	/**** Flags ****/
 	UPROPERTY(BlueprintReadOnly, Category = Attack)
 		bool IsAttacking;
+	UPROPERTY(BlueprintReadOnly, Category = Attack)
+		bool IsBlocking;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanAddNextComboAttack = true;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanMove = true;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanAttack = true;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanBlock = true;
 	UPROPERTY(BlueprintReadWrite, Category = Reaction)
 		TEnumAsByte <ReactType> Reaction = ReactType::NoReact;
 
@@ -67,7 +71,10 @@ public:
 	void StopAttack1();
 	void Attack2();
 	void StopAttack2();
+	void Block();
+	void StopBlock();
 	void SetTargetEnemy(AFightingCharacter* enemy);
+	void RotateToTarget(float DeltaTime);
 	AFightingCharacter* GetTargetEnemy();
 	bool bDefeated;
 

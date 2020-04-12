@@ -3,6 +3,8 @@
 
 #include "FightingCharacter.h"
 #include "Engine/EngineTypes.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Math/UnrealMathUtility.h"
 
 #include <vector>
 
@@ -20,7 +22,7 @@ AFightingCharacter::AFightingCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 	GetCharacterMovement()->JumpZVelocity = 600.0f;
 	GetCharacterMovement()->AirControl = 0.2f;
@@ -35,6 +37,7 @@ AFightingCharacter::AFightingCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	bDefeated = false;
+	//IsBlocking = false;
 
 	// Collision boxes
 	CollisionBoxesInit();
@@ -54,6 +57,7 @@ void AFightingCharacter::BeginPlay()
 		weapon->OnComponentBeginOverlap.AddDynamic(this, &AFightingCharacter::OnAttackOverlapBegin);
 		weapon->OnComponentEndOverlap.AddDynamic(this, &AFightingCharacter::OnAttackOverlapEnd);
 	}
+
 }
 
 // Called every frame
@@ -61,6 +65,7 @@ void AFightingCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	RotateToTarget(DeltaTime);
 	//UE_LOG(LogTemp, Warning, TEXT("speed: %f"), GetVelocity().Size());
 }
 
@@ -68,6 +73,9 @@ void AFightingCharacter::Tick(float DeltaTime)
 void AFightingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	PlayerInputComponent->BindAxis("MoveForward", this, &AFightingCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AFightingCharacter::MoveRight);
 
 	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
@@ -81,13 +89,15 @@ void AFightingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction("Attack2", IE_Pressed, this, &AFightingCharacter::Attack2);
 	PlayerInputComponent->BindAction("Attack2", IE_Released, this, &AFightingCharacter::StopAttack2);
 
-	PlayerInputComponent->BindAxis("MoveForward", this, &AFightingCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &AFightingCharacter::MoveRight);
+	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &AFightingCharacter::Block);
+	PlayerInputComponent->BindAction("Block", IE_Released, this, &AFightingCharacter::StopBlock);
+
+	
 }
 
 void AFightingCharacter::MoveForward(float Axis)
 {
-	if (!bDefeated) {
+	if (!bDefeated && CanMove) {
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
@@ -98,7 +108,7 @@ void AFightingCharacter::MoveForward(float Axis)
 
 void AFightingCharacter::MoveRight(float Axis)
 {
-	if (!bDefeated) {
+	if (!bDefeated  && CanMove){
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
@@ -111,12 +121,14 @@ void AFightingCharacter::Attack1()
 {
 	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("can add"));
 	//else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("canNOT add"));
-	if (!bDefeated && CanAttack) {
+	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack1) {
 			if (CanAddNextComboAttack) {
 				ComboSequenceStr += TEXT("1");
 				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
 				CanAddNextComboAttack = false;
+				CanMove = false;
+				CanBlock = false;
 			}
 			bAttack1 = true;
 		}
@@ -132,11 +144,13 @@ void AFightingCharacter::StopAttack1()
 
 void AFightingCharacter::Attack2()
 {
-	if (!bDefeated && CanAttack) {
+	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack2) {
 			if (CanAddNextComboAttack) { 
 				ComboSequenceStr += TEXT("2");
 				CanAddNextComboAttack = false;
+				CanMove = false;
+				CanBlock = false;
 			}
 			bAttack2 = true;
 		}
@@ -148,6 +162,24 @@ void AFightingCharacter::StopAttack2()
 {
 	bAttack2 = false;
 	IsAttacking = false;
+}
+
+void AFightingCharacter::Block()
+{
+	if (!bDefeated && CanBlock) {
+		IsBlocking = true;
+		CanMove = false;
+		CanAttack = false;
+	}
+}
+
+void AFightingCharacter::StopBlock()
+{
+	if (IsBlocking) {
+		IsBlocking = false;
+		CanMove = true;
+		CanAttack = true;
+	}
 }
 
 void AFightingCharacter::SetTargetEnemy(AFightingCharacter* enemy) {
@@ -230,6 +262,19 @@ void AFightingCharacter::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedCompo
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
 }
 
+void AFightingCharacter::RotateToTarget(float DeltaTime) {
+
+	if (TargetEnemy != NULL) {
+		FVector TargetLocation = TargetEnemy->GetActorLocation();
+		FRotator LookAt = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
+		
+		FRotator NextRotation = FMath::RInterpTo(GetActorRotation(), LookAt, DeltaTime, 2.0f);
+
+		SetActorRotation(NextRotation);
+	}
+	
+}
+
 float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 {
 	float max_accel = 120;
@@ -247,6 +292,10 @@ float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 	{
 		speedForAnimation = actual_speed;
 	}
+
+	float cosAngle = GetActorForwardVector().CosineAngle2D(GetVelocity());
+
+	if (cosAngle < 0) return -speedForAnimation;
 
 	return speedForAnimation;
 }
@@ -286,6 +335,8 @@ void AFightingCharacter::ClearComboSequence()
 {
 	ComboSequenceStr = TEXT("");
 	CanAddNextComboAttack = true;
+	CanMove = true;
+	CanBlock = true;
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Orange, TEXT("CLEARED"));
 }
 
