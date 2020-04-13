@@ -45,6 +45,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 		UCameraComponent* FollowCamera;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		USceneComponent* Camera2LookAt;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		USpringArmComponent* Camera2Boom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		UCameraComponent* Camera2;
+
 
 	/**** Flags ****/
 	UPROPERTY(BlueprintReadOnly, Category = Attack)
@@ -67,12 +76,17 @@ public:
 
 	void MoveForward(float Axis);
 	void MoveRight(float Axis);
+	void Turn(float Val);
+	void LookUp(float Val);
+	void Run();
+	void StopRunning();
 	void Attack1();
 	void StopAttack1();
 	void Attack2();
 	void StopAttack2();
 	void Block();
 	void StopBlock();
+	void ChangeCamera();
 	void SetTargetEnemy(AFightingCharacter* enemy);
 	void RotateToTarget(float DeltaTime);
 	AFightingCharacter* GetTargetEnemy();
@@ -190,6 +204,17 @@ protected:
 
 	bool bAttack1;
 	bool bAttack2;
+	bool bIsRunning;
+
+	float MaxWalkSpeed = 40.0f;
+	float MaxRunSpeed = 200.0f;
+
+	FVector Cam2Location;
+	FVector Cam2LookAt;
+	FRotator ControllerRotation;
+
+	APlayerController* ThisPlayerController;
+	bool IsPlayableChar = false;
 
 public:	
 	// Called every frame

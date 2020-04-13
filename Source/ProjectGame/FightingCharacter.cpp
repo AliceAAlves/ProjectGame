@@ -36,6 +36,27 @@ AFightingCharacter::AFightingCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
+
+	Camera2LookAt = CreateDefaultSubobject<USceneComponent>(TEXT("Camera2LookAt"));
+	Camera2LookAt->SetupAttachment(RootComponent);
+	Camera2LookAt->SetWorldLocation(GetActorLocation() + FVector(100.0f, 0.0f, 0.0f));
+	//Camera2LookAt->SetWorldRotation(FQuat(FRotator(0.0f, 90.0f, 0.0f)));
+
+	Camera2Boom = CreateDefaultSubobject<USpringArmComponent>(TEXT("Camera2Boom"));
+	Camera2Boom->SetupAttachment(Camera2LookAt);
+	Camera2Boom->TargetArmLength = 300.0f;
+	//Camera2Boom->SetWorldRotation(FQuat(FRotator(0.0f, 90.0f, 0.0f)));
+	Camera2Boom->bUsePawnControlRotation = true;
+
+	Cam2LookAt = GetActorLocation() + FVector(100.0f, 0.0f, 0.0f);
+	Cam2Location = Cam2LookAt + GetActorForwardVector().RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal()*300;
+
+	Camera2 = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera2"));
+	//Camera2->SetupAttachment(Camera2Boom, USpringArmComponent::SocketName);
+	Camera2->SetWorldLocation(Cam2Location);
+	Camera2->SetupAttachment(RootComponent);
+	Camera2->bUsePawnControlRotation = true;
+
 	bDefeated = false;
 	//IsBlocking = false;
 
@@ -48,7 +69,22 @@ void AFightingCharacter::BeginPlay()
 {
 	Super::BeginPlay(); 
 
-	AddControllerYawInput(-15);
+	//AddControllerYawInput(-15);
+
+	FollowCamera->Deactivate();
+	Camera2->Activate();
+
+	ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
+
+	ThisPlayerController = UGameplayStatics::GetPlayerController(this, 0);
+	ThisPlayerController->SetControlRotation(ControllerRotation);
+
+	if(IsPlayableChar) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("BEFORE: false"));
+	else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("BEFORE: true"));
+	IsPlayableChar = UGameplayStatics::GetPlayerPawn(GetWorld(), 0) == this;
+
+	if (IsPlayableChar) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("AFTER: false"));
+	else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("AFTER: true"));
 
 	AttachCollisionBoxesToSockets();
 
@@ -66,6 +102,32 @@ void AFightingCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	RotateToTarget(DeltaTime);
+
+	if (bIsRunning) {
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		GetCharacterMovement()->MaxWalkSpeed = MaxRunSpeed;
+	}
+	else {
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		if (GetVelocity().Size() > MaxWalkSpeed) {
+			GetCharacterMovement()->MaxWalkSpeed -= GetCharacterMovement()->MaxAcceleration*DeltaTime;
+		}
+		else GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
+	}
+
+	//Set Camera 2 location and rotation
+	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("Camera2 is active"));
+		FVector ToTargetDirection = TargetEnemy->GetActorLocation() - GetActorLocation();
+		Cam2LookAt = GetActorLocation() + ToTargetDirection/2;
+		Cam2Location = Cam2LookAt + ToTargetDirection.RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal() * 300;
+		
+		Camera2->SetWorldLocation(Cam2Location);
+		ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
+		ThisPlayerController->SetControlRotation(ControllerRotation);
+	}
+	
+
 	//UE_LOG(LogTemp, Warning, TEXT("speed: %f"), GetVelocity().Size());
 }
 
@@ -77,8 +139,13 @@ void AFightingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFightingCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFightingCharacter::MoveRight);
 
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("Turn", this, &AFightingCharacter::Turn);
+	PlayerInputComponent->BindAxis("LookUp", this, &AFightingCharacter::LookUp);
+
+	PlayerInputComponent->BindAction("ChangeCamera", IE_Pressed, this, &AFightingCharacter::ChangeCamera);
+
+	PlayerInputComponent->BindAction("Run", IE_Pressed, this, &AFightingCharacter::Run);
+	PlayerInputComponent->BindAction("Run", IE_Released, this, &AFightingCharacter::StopRunning);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
@@ -115,6 +182,30 @@ void AFightingCharacter::MoveRight(float Axis)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		AddMovementInput(Direction, Axis);
 	}
+}
+
+void AFightingCharacter::Turn(float Val)
+{
+	if (FollowCamera->IsActive()) {
+		AddControllerYawInput(Val);
+	}
+}
+
+void AFightingCharacter::LookUp(float Val)
+{
+	if (FollowCamera->IsActive()) {
+		AddControllerPitchInput(Val);
+	}
+}
+
+void AFightingCharacter::Run()
+{
+	bIsRunning = true;
+}
+
+void AFightingCharacter::StopRunning()
+{
+	bIsRunning = false;
 }
 
 void AFightingCharacter::Attack1()
@@ -179,6 +270,18 @@ void AFightingCharacter::StopBlock()
 		IsBlocking = false;
 		CanMove = true;
 		CanAttack = true;
+	}
+}
+
+void AFightingCharacter::ChangeCamera()
+{
+	if (FollowCamera->IsActive()) {
+		Camera2->Activate();
+		FollowCamera->Deactivate();
+	}
+	else {
+		FollowCamera->Activate();
+		Camera2->Deactivate();
 	}
 }
 
@@ -264,7 +367,8 @@ void AFightingCharacter::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedCompo
 
 void AFightingCharacter::RotateToTarget(float DeltaTime) {
 
-	if (TargetEnemy != NULL) {
+	float speed = GetVelocity().Size();
+	if (TargetEnemy != NULL && speed != 0) {
 		FVector TargetLocation = TargetEnemy->GetActorLocation();
 		FRotator LookAt = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
 		
@@ -277,8 +381,8 @@ void AFightingCharacter::RotateToTarget(float DeltaTime) {
 
 float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 {
-	float max_accel = 120;
-	float anim_accel = 100;
+	float max_accel = GetCharacterMovement()->MaxAcceleration + 20;
+	float anim_accel = GetCharacterMovement()->MaxAcceleration;
 	
 	FVector velocity = FVector(GetVelocity().X, GetVelocity().Y, 0.0f);
 	float actual_speed = velocity.Size();
