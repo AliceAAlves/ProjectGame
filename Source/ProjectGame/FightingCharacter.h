@@ -46,12 +46,6 @@ public:
 		UCameraComponent* FollowCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		USceneComponent* Camera2LookAt;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		USpringArmComponent* Camera2Boom;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 		UCameraComponent* Camera2;
 
 
@@ -212,6 +206,7 @@ protected:
 	FVector Cam2Location;
 	FVector Cam2LookAt;
 	FRotator ControllerRotation;
+	float Cam2Distance = 300;
 
 	APlayerController* ThisPlayerController;
 	bool IsPlayableChar = false;

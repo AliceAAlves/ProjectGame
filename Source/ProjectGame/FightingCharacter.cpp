@@ -36,23 +36,10 @@ AFightingCharacter::AFightingCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-
-	Camera2LookAt = CreateDefaultSubobject<USceneComponent>(TEXT("Camera2LookAt"));
-	Camera2LookAt->SetupAttachment(RootComponent);
-	Camera2LookAt->SetWorldLocation(GetActorLocation() + FVector(100.0f, 0.0f, 0.0f));
-	//Camera2LookAt->SetWorldRotation(FQuat(FRotator(0.0f, 90.0f, 0.0f)));
-
-	Camera2Boom = CreateDefaultSubobject<USpringArmComponent>(TEXT("Camera2Boom"));
-	Camera2Boom->SetupAttachment(Camera2LookAt);
-	Camera2Boom->TargetArmLength = 300.0f;
-	//Camera2Boom->SetWorldRotation(FQuat(FRotator(0.0f, 90.0f, 0.0f)));
-	Camera2Boom->bUsePawnControlRotation = true;
-
 	Cam2LookAt = GetActorLocation() + FVector(100.0f, 0.0f, 0.0f);
-	Cam2Location = Cam2LookAt + GetActorForwardVector().RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal()*300;
+	Cam2Location = Cam2LookAt + GetActorForwardVector().RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal()*Cam2Distance;
 
 	Camera2 = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera2"));
-	//Camera2->SetupAttachment(Camera2Boom, USpringArmComponent::SocketName);
 	Camera2->SetWorldLocation(Cam2Location);
 	Camera2->SetupAttachment(RootComponent);
 	Camera2->bUsePawnControlRotation = true;
@@ -79,12 +66,7 @@ void AFightingCharacter::BeginPlay()
 	ThisPlayerController = UGameplayStatics::GetPlayerController(this, 0);
 	ThisPlayerController->SetControlRotation(ControllerRotation);
 
-	if(IsPlayableChar) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("BEFORE: false"));
-	else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("BEFORE: true"));
 	IsPlayableChar = UGameplayStatics::GetPlayerPawn(GetWorld(), 0) == this;
-
-	if (IsPlayableChar) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("AFTER: false"));
-	else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("AFTER: true"));
 
 	AttachCollisionBoxesToSockets();
 
@@ -103,6 +85,7 @@ void AFightingCharacter::Tick(float DeltaTime)
 
 	RotateToTarget(DeltaTime);
 
+	//Setting max speed on whether is running or not
 	if (bIsRunning) {
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 		GetCharacterMovement()->MaxWalkSpeed = MaxRunSpeed;
@@ -117,10 +100,17 @@ void AFightingCharacter::Tick(float DeltaTime)
 
 	//Set Camera 2 location and rotation
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
-		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("Camera2 is active"));
 		FVector ToTargetDirection = TargetEnemy->GetActorLocation() - GetActorLocation();
+		float distance = ToTargetDirection.Size();
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("distance: %f"), distance));
+
+		float distanceOffset = 0.0f;
+		if (distance > 500.0f) {
+			distanceOffset = (distance - 500.0f)*0.5;
+		}
+
 		Cam2LookAt = GetActorLocation() + ToTargetDirection/2;
-		Cam2Location = Cam2LookAt + ToTargetDirection.RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal() * 300;
+		Cam2Location = Cam2LookAt + ToTargetDirection.RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal() * (Cam2Distance + distanceOffset);
 		
 		Camera2->SetWorldLocation(Cam2Location);
 		ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
