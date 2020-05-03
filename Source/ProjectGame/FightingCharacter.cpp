@@ -102,7 +102,7 @@ void AFightingCharacter::Tick(float DeltaTime)
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
 		FVector ToTargetDirection = TargetEnemy->GetActorLocation() - GetActorLocation();
 		float distance = ToTargetDirection.Size();
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("distance: %f"), distance));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("distance: %f"), distance));
 
 		float distanceOffset = 0.0f;
 		if (distance > 500.0f) {
@@ -111,7 +111,9 @@ void AFightingCharacter::Tick(float DeltaTime)
 
 		Cam2LookAt = GetActorLocation() + ToTargetDirection/2;
 		Cam2Location = Cam2LookAt + ToTargetDirection.RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal() * (Cam2Distance + distanceOffset);
-		
+		Cam2LookAt.Z = 250;
+		Cam2Location.Z = 250;
+
 		Camera2->SetWorldLocation(Cam2Location);
 		ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
 		ThisPlayerController->SetControlRotation(ControllerRotation);
@@ -306,6 +308,34 @@ void AFightingCharacter::PunchAttackEnd()
 	RightFistCollisionBox->SetGenerateOverlapEvents(false);
 }
 
+void AFightingCharacter::KickAttackStart()
+{
+	LeftFootCollisionBox->SetCollisionProfileName("Weapon");
+	LeftFootCollisionBox->SetNotifyRigidBodyCollision(true);
+	LeftFootCollisionBox->SetGenerateOverlapEvents(true);
+
+	RightFootCollisionBox->SetCollisionProfileName("Weapon");
+	RightFootCollisionBox->SetNotifyRigidBodyCollision(true);
+	RightFootCollisionBox->SetGenerateOverlapEvents(true);
+
+	LeftLegCollisionBox->SetCollisionProfileName("Weapon");
+	RightLegCollisionBox->SetCollisionProfileName("Weapon");
+}
+
+void AFightingCharacter::KickAttackEnd()
+{
+	LeftFootCollisionBox->SetCollisionProfileName("NoCollision");
+	LeftFootCollisionBox->SetNotifyRigidBodyCollision(false);
+	LeftFootCollisionBox->SetGenerateOverlapEvents(false);
+
+	RightFootCollisionBox->SetCollisionProfileName("NoCollision");
+	RightFootCollisionBox->SetNotifyRigidBodyCollision(false);
+	RightFootCollisionBox->SetGenerateOverlapEvents(false);
+
+	LeftLegCollisionBox->SetCollisionProfileName("DamageBox");
+	RightLegCollisionBox->SetCollisionProfileName("DamageBox");
+}
+
 void AFightingCharacter::ReactionStart(FString CollisionBoxName) {
 	FString hitArea = DamageCBCategory[CollisionBoxName];
 	if (hitArea.Compare(TEXT("torso")) == 0) {
@@ -360,6 +390,7 @@ void AFightingCharacter::RotateToTarget(float DeltaTime) {
 	float speed = GetVelocity().Size();
 	if (TargetEnemy != NULL && speed != 0) {
 		FVector TargetLocation = TargetEnemy->GetActorLocation();
+		TargetLocation.Z = GetActorLocation().Z;
 		FRotator LookAt = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
 		
 		FRotator NextRotation = FMath::RInterpTo(GetActorRotation(), LookAt, DeltaTime, 2.0f);
@@ -401,6 +432,11 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 
 	//get socket name depending on montage name
 	FName SocketName = TEXT("face_socket");
+	if (MontageName.Equals(TEXT("None")))  return TargetLocation;
+	else if (MontageName.Equals(TEXT("Attack_Kick_R_torso"))) { 
+		SocketName = TEXT("spine_01");
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, TEXT("spineeee"));
+	}
 
 	// get enemy socket location
 	if (TargetEnemy != NULL) {

@@ -157,6 +157,8 @@ public:
 
 	void PunchAttackStart();
 	void PunchAttackEnd();
+	void KickAttackStart();
+	void KickAttackEnd();
 
 	/* React Function */
 
