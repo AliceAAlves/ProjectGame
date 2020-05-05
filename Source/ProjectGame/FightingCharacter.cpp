@@ -227,7 +227,8 @@ void AFightingCharacter::Attack1()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack1) {
 			if (CanAddNextComboAttack) {
-				if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
+				if (IsDucking) ComboSequenceStr = TEXT("0");
+				else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
 				else if (TauntPressed) { 
 					if( get_random_float() <= 0.50) ComboSequenceStr = TEXT("5");
 					else ComboSequenceStr = TEXT("55");
@@ -239,6 +240,9 @@ void AFightingCharacter::Attack1()
 				CanBlock = false;
 				CanJump_ = false;
 				CanDuck = false;
+
+				Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
+				Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 			}
 			bAttack1 = true;
 		}
@@ -257,7 +261,8 @@ void AFightingCharacter::Attack2()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack2) {
 			if (CanAddNextComboAttack) { 
-				if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
+				if (IsDucking) ComboSequenceStr = TEXT("0");
+				else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
 				else if (TauntPressed) {
 					if (get_random_float() <= 0.80) ComboSequenceStr = TEXT("6");
 					else ComboSequenceStr = TEXT("66");
@@ -283,7 +288,7 @@ void AFightingCharacter::StopAttack2()
 
 void AFightingCharacter::Block()
 {
-	if (!bDefeated && CanBlock) {
+	if (!bDefeated && CanBlock && !(GetCharacterMovement()->IsFalling())) {
 		IsBlocking = true;
 		CanMove = false;
 		CanAttack = false;
@@ -303,11 +308,11 @@ void AFightingCharacter::StopBlocking()
 
 void AFightingCharacter::Duck()
 {
-	if (!bDefeated && CanDuck) {
+	if (!bDefeated && CanDuck && !(GetCharacterMovement()->IsFalling())) {
 		IsDucking = true;
 		CanMove = false;
-		CanAttack = false;
 		CanJump_ = false;
+		CanBlock = false;
 	}
 }
 
@@ -316,8 +321,8 @@ void AFightingCharacter::StopDucking()
 	if (IsDucking) {
 		IsDucking = false;
 		CanMove = true;
-		CanAttack = true;
 		CanJump_ = true;
+		CanBlock = true;
 	}
 }
 
@@ -537,6 +542,14 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 	return TargetLocation;
 }
 
+
+FVector AFightingCharacter::GetFootRLocation() {
+	return Foot_R_Location;
+}
+
+FVector AFightingCharacter::GetFootLLocation() {
+	return Foot_L_Location;
+}
 
 void AFightingCharacter::ClearComboSequence()
 {

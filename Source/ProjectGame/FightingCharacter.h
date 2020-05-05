@@ -109,6 +109,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Animation)
 		FVector GetTargetSocketLocation(FString MontageName);
 
+	UFUNCTION(BlueprintCallable, Category = Animation)
+		FVector GetFootRLocation();
+
+	UFUNCTION(BlueprintCallable, Category = Animation)
+		FVector GetFootLLocation();
+
 	UFUNCTION(BlueprintCallable, Category = Attack)
 		void ClearComboSequence();
 
@@ -221,6 +227,9 @@ protected:
 
 	float MaxWalkSpeed = 40.0f;
 	float MaxRunSpeed = 200.0f;
+
+	FVector Foot_R_Location;
+	FVector Foot_L_Location;
 
 	FVector Cam2Location;
 	FVector Cam2LookAt;
