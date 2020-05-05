@@ -7,6 +7,7 @@
 #include "Math/UnrealMathUtility.h"
 
 #include <vector>
+#include <random>
 
 #include "Engine.h"
 
@@ -92,11 +93,14 @@ void AFightingCharacter::Tick(float DeltaTime)
 	}
 	else {
 		GetCharacterMovement()->bOrientRotationToMovement = false;
+		//If it's not running but current speed is more than the max walk speed, decrease it gradually
 		if (GetVelocity().Size() > MaxWalkSpeed) {
 			GetCharacterMovement()->MaxWalkSpeed -= GetCharacterMovement()->MaxAcceleration*DeltaTime;
 		}
 		else GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 	}
+
+	
 
 	//Set Camera 2 location and rotation
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
@@ -139,7 +143,7 @@ void AFightingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction("Run", IE_Pressed, this, &AFightingCharacter::Run);
 	PlayerInputComponent->BindAction("Run", IE_Released, this, &AFightingCharacter::StopRunning);
 
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AFightingCharacter::JumpChecking);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Attack1", IE_Pressed, this, &AFightingCharacter::Attack1);
@@ -149,7 +153,16 @@ void AFightingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction("Attack2", IE_Released, this, &AFightingCharacter::StopAttack2);
 
 	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &AFightingCharacter::Block);
-	PlayerInputComponent->BindAction("Block", IE_Released, this, &AFightingCharacter::StopBlock);
+	PlayerInputComponent->BindAction("Block", IE_Released, this, &AFightingCharacter::StopBlocking);
+
+	PlayerInputComponent->BindAction("Duck", IE_Pressed, this, &AFightingCharacter::Duck);
+	PlayerInputComponent->BindAction("Duck", IE_Released, this, &AFightingCharacter::StopDucking);
+
+	PlayerInputComponent->BindAction("MoveMod", IE_Pressed, this, &AFightingCharacter::MoveMod);
+	PlayerInputComponent->BindAction("MoveMod", IE_Released, this, &AFightingCharacter::StopMoveMod);
+
+	PlayerInputComponent->BindAction("Taunt", IE_Pressed, this, &AFightingCharacter::Taunt);
+	PlayerInputComponent->BindAction("Taunt", IE_Released, this, &AFightingCharacter::StopTaunt);
 
 	
 }
@@ -200,6 +213,13 @@ void AFightingCharacter::StopRunning()
 	bIsRunning = false;
 }
 
+void AFightingCharacter::JumpChecking()
+{
+	if (!bDefeated && CanJump_) {
+		Jump();
+	}
+}
+
 void AFightingCharacter::Attack1()
 {
 	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("can add"));
@@ -207,11 +227,18 @@ void AFightingCharacter::Attack1()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack1) {
 			if (CanAddNextComboAttack) {
-				ComboSequenceStr += TEXT("1");
+				if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
+				else if (TauntPressed) { 
+					if( get_random_float() <= 0.50) ComboSequenceStr = TEXT("5");
+					else ComboSequenceStr = TEXT("55");
+				}
+				else ComboSequenceStr += TEXT("1");
 				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
 				CanAddNextComboAttack = false;
 				CanMove = false;
 				CanBlock = false;
+				CanJump_ = false;
+				CanDuck = false;
 			}
 			bAttack1 = true;
 		}
@@ -230,10 +257,17 @@ void AFightingCharacter::Attack2()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (!bAttack2) {
 			if (CanAddNextComboAttack) { 
-				ComboSequenceStr += TEXT("2");
+				if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
+				else if (TauntPressed) {
+					if (get_random_float() <= 0.80) ComboSequenceStr = TEXT("6");
+					else ComboSequenceStr = TEXT("66");
+				}
+				else ComboSequenceStr += TEXT("2");
 				CanAddNextComboAttack = false;
 				CanMove = false;
 				CanBlock = false;
+				CanJump_ = false;
+				CanDuck = false;
 			}
 			bAttack2 = true;
 		}
@@ -253,16 +287,59 @@ void AFightingCharacter::Block()
 		IsBlocking = true;
 		CanMove = false;
 		CanAttack = false;
+		CanJump_ = false;
 	}
 }
 
-void AFightingCharacter::StopBlock()
+void AFightingCharacter::StopBlocking()
 {
 	if (IsBlocking) {
 		IsBlocking = false;
 		CanMove = true;
 		CanAttack = true;
+		CanJump_ = true;
 	}
+}
+
+void AFightingCharacter::Duck()
+{
+	if (!bDefeated && CanDuck) {
+		IsDucking = true;
+		CanMove = false;
+		CanAttack = false;
+		CanJump_ = false;
+	}
+}
+
+void AFightingCharacter::StopDucking()
+{
+	if (IsDucking) {
+		IsDucking = false;
+		CanMove = true;
+		CanAttack = true;
+		CanJump_ = true;
+	}
+}
+
+void AFightingCharacter::MoveMod()
+{
+	MoveModPressed = true;
+}
+
+
+void AFightingCharacter::StopMoveMod()
+{
+	MoveModPressed = false;
+}
+
+void AFightingCharacter::Taunt()
+{
+	TauntPressed = true;
+}
+
+void AFightingCharacter::StopTaunt()
+{
+	TauntPressed = false;
 }
 
 void AFightingCharacter::ChangeCamera()
@@ -435,7 +512,6 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 	if (MontageName.Equals(TEXT("None")))  return TargetLocation;
 	else if (MontageName.Equals(TEXT("Attack_Kick_R_torso"))) { 
 		SocketName = TEXT("spine_01");
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, TEXT("spineeee"));
 	}
 
 	// get enemy socket location
@@ -468,6 +544,8 @@ void AFightingCharacter::ClearComboSequence()
 	CanAddNextComboAttack = true;
 	CanMove = true;
 	CanBlock = true;
+	CanJump_ = true;
+	CanDuck = true;
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Orange, TEXT("CLEARED"));
 }
 
@@ -588,4 +666,11 @@ void AFightingCharacter::AttachCollisionBoxesToSockets()
 	RightLegCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "leg_r_collsion");
 	LeftThighCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "thigh_l_collision");
 	LeftLegCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "leg_l_collsion");
+}
+
+float get_random_float()
+{
+	static std::default_random_engine e;
+	static std::uniform_real_distribution<> dis(0, 1); // rage 0 - 1
+	return dis(e);
 }

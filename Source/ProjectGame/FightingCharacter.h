@@ -54,14 +54,24 @@ public:
 		bool IsAttacking;
 	UPROPERTY(BlueprintReadOnly, Category = Attack)
 		bool IsBlocking;
+	UPROPERTY(BlueprintReadOnly, Category = Attack)
+		bool IsDucking;
+	UPROPERTY(BlueprintReadOnly, Category = Attack)
+		bool MoveModPressed;
+	UPROPERTY(BlueprintReadOnly, Category = Attack)
+		bool TauntPressed;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanAddNextComboAttack = true;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanMove = true;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanJump_ = true;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanAttack = true;
 	UPROPERTY(BlueprintReadWrite, Category = Attack)
 		bool CanBlock = true;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool CanDuck = true;
 	UPROPERTY(BlueprintReadWrite, Category = Reaction)
 		TEnumAsByte <ReactType> Reaction = ReactType::NoReact;
 
@@ -74,12 +84,19 @@ public:
 	void LookUp(float Val);
 	void Run();
 	void StopRunning();
+	void JumpChecking();
 	void Attack1();
 	void StopAttack1();
 	void Attack2();
 	void StopAttack2();
 	void Block();
-	void StopBlock();
+	void StopBlocking();
+	void Duck();
+	void StopDucking();
+	void MoveMod();
+	void StopMoveMod();
+	void Taunt();
+	void StopTaunt();
 	void ChangeCamera();
 	void SetTargetEnemy(AFightingCharacter* enemy);
 	void RotateToTarget(float DeltaTime);
@@ -221,3 +238,5 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 };
+
+float get_random_float();
