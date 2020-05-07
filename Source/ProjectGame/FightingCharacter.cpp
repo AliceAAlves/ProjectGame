@@ -100,6 +100,25 @@ void AFightingCharacter::Tick(float DeltaTime)
 		else GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 	}
 
+	//Reposition on Impact - THIS LOOKS LIKE SHITE
+	if (bImpact) {
+		if (ImpactComponent && ImpactVelocity==0) {
+			FVector ComponentDistance = ImpactComponent->GetComponentLocation() - ImpactCompLocation;
+			ImpactVelocity = ComponentDistance.Size() / DeltaTime * 0.02;
+			
+			if (ImpactVelocity != 0) bImpact = false;
+		}
+		
+	}
+	ImpactNormal = ImpactNormal.GetSafeNormal2D();
+
+	FVector newLocation = GetActorLocation() + ImpactNormal * ImpactVelocity;
+	SetActorLocation(newLocation, true);
+
+	if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("ImpactVelocity: %f"), ImpactVelocity));
+
+	if(ImpactVelocity>0) ImpactVelocity -= ImpactDeceleration * DeltaTime;
+	if(ImpactVelocity<0) ImpactVelocity = 0;
 	
 
 	//Set Camera 2 location and rotation
@@ -273,6 +292,9 @@ void AFightingCharacter::Attack2()
 				CanBlock = false;
 				CanJump_ = false;
 				CanDuck = false;
+
+				Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
+				Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 			}
 			bAttack2 = true;
 		}
@@ -430,7 +452,13 @@ void AFightingCharacter::ReactionStart(FString CollisionBoxName) {
 
 void AFightingCharacter::OnAttackHit(UPrimitiveComponent * HitComponent, AActor * OtherActor, UPrimitiveComponent * OtherComp, FVector NormalImpulse, const FHitResult & Hit)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, __FUNCTION__);
+	GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, __FUNCTION__);
+
+	FVector impact_point = Hit.ImpactPoint;
+	float dist = Hit.Distance;
+	GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
+	GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("dist: %f"), dist));
+
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, Hit.GetActor()->GetName());
 
 }
@@ -446,13 +474,83 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 			FString hitArea = DamageCBCategory[OtherComp->GetName()];
 			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("area: %s"), *hitArea));
 			enemy->ReactionStart(OtherComp->GetName());
-			if (hitArea.Compare("torso") == 0) {
-				GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
+
+			/*FVector WeaponLocation = OverlappedComponent->GetComponentLocation();
+			FVector DamageBoxLocation = OtherComp->GetComponentLocation();
+			FVector WeaponHitLocation = FVector();
+			FVector DamageBoxHitLocation = FVector();
+
+			float rsult = OtherComp->GetClosestPointOnCollision(WeaponLocation, DamageBoxHitLocation);
+			float rsult2 = OverlappedComponent->GetClosestPointOnCollision(DamageBoxLocation, WeaponHitLocation);
+			
+			FVector DirectionToMove = WeaponHitLocation - DamageBoxHitLocation;
+			DirectionToMove.Z = 0;
+
+			FVector NewLocation = enemy->GetActorLocation() + DirectionToMove;
+
+			enemy->SetActorLocation(NewLocation);
+
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("DirectionToMove: %f, %f, %f"), DirectionToMove.X, DirectionToMove.Y, DirectionToMove.Z));
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("HitLocation: %f, %f, %f"), HitLocation.X, HitLocation.Y, HitLocation.Z));
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("return: %f"), rsult));
+
+			FVector impact_point = OverlappedComponent->GetComponentLocation();
+			float dist = SweepResult.Distance;
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("dist: %f"), dist));*/
+
+
+			// SweepResult is unpopulated for OnOverlapBegin - a bug from Unreal. Solution to get the HitResult:
+		    // https://answers.unrealengine.com/questions/165523/on-component-begin-overlap-sweep-result-not-popula.html
+
+			TArray<FHitResult> AllResults;
+
+			FHitResult Hit;
+
+			// Get the location of this actor's overlapped component
+			auto Start = OverlappedComponent->GetComponentLocation();
+			// Get the location of the other component
+			auto End = OtherComp->GetComponentLocation();
+			// Use a slightly larger radius to ensure we find the same result
+			auto CollisionRadius = FVector::Dist(Start, End) * 1.1f;
+
+			// Now do a spherical sweep to find the overlap
+			GetWorld()->SweepMultiByObjectType(AllResults, Start, End, FQuat::Identity, 0, FCollisionShape::MakeSphere(CollisionRadius),
+				FCollisionQueryParams::FCollisionQueryParams(false) );
+
+			// Finally check which hit result is the one from this event
+			for (auto HitResult : AllResults)
+			{
+				if (OtherComp->GetUniqueID() == HitResult.GetComponent()->GetUniqueID()) {
+					// A component with the same UniqueID means we found our overlap!
+					Hit = HitResult;
+					break;
+				}
+			}
+
+			/************************************/
+
+			/*FVector impact_point = Hit.Normal;
+			FVector impact_normal = Hit.ImpactNormal;
+			float pen = Hit.PenetrationDepth;
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("impact_normal: %f, %f, %f"), impact_normal.X, impact_normal.Y, impact_normal.Z));
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("dist: %f"), pen));*/
+
+			enemy->ImpactComponent = OverlappedComponent;
+			enemy->ImpactCompLocation = OverlappedComponent->GetComponentLocation();
+			enemy->bImpact = true;
+			//enemy->ImpactNormal = -Hit.ImpactNormal;
+			enemy->ImpactDirection = GetActorForwardVector();
+
+			if (hitArea.Compare("head") == 0) {
+				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
 				//enemy->FaceHitEvent();
 				
 			}
 			else {
-				GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, OtherComp->GetName());
+				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, OtherComp->GetName());
 			}
 		}
 		

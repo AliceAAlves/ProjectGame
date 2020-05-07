@@ -207,6 +207,15 @@ public:
 	UFUNCTION()
 		void OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	/* For Impact Response */
+
+	UPrimitiveComponent* ImpactComponent;
+	FVector ImpactCompLocation;
+	bool bImpact;
+	FVector ImpactDirection;
+	float ImpactVelocity;
+	float ImpactDeceleration = 200.0f;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
