@@ -481,12 +481,14 @@ void AFightingCharacter::KickAttackEnd()
 	bTrackFootsVelocity = false;
 }
 
-void AFightingCharacter::ReactionStart(UPrimitiveComponent* CollisionBox, float ImpactVel, FVector ImpactPoint) {
+void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* CollisionBox, float ImpactVel, FVector ImpactPoint, FString AttackName) {
 	Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
 	Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 
 	FVector BoxCentre = CollisionBox->GetComponentLocation();
 	
+	
+
 	FString CollisionBoxName = CollisionBox->GetName();
 	FString hitArea = DamageCBCategory[CollisionBoxName];
 
@@ -506,11 +508,11 @@ void AFightingCharacter::ReactionStart(UPrimitiveComponent* CollisionBox, float 
 	else if (ImpactVel > 800) big_hit = true;
 	else medium_hit = true;
 
-	if (hitArea.Compare(TEXT("chest")) == 0) {
+	/*if (hitArea.Equals(TEXT("chest"))) {
 		if (ImpactPoint.Z > BoxCentre.Z) hitArea = TEXT("head");
 		else hitArea = TEXT("torso");
 	}
-	if (hitArea.Compare(TEXT("torso")) == 0) {
+	if (hitArea.Equals(TEXT("torso"))) {
 		if (back) Reaction = ReactType::Back;
 		else if (front) {
 			if (small_hit) Reaction = ReactType::Torso_FS;
@@ -528,7 +530,7 @@ void AFightingCharacter::ReactionStart(UPrimitiveComponent* CollisionBox, float 
 			else if (big_hit) Reaction = ReactType::Torso_LB;
 		}
 	}
-	else if (hitArea.Compare(TEXT("head")) == 0) {
+	else if (hitArea.Equals(TEXT("head"))) {
 		if (back) Reaction = ReactType::Back;
 		else if (front) {
 			if (small_hit) Reaction = ReactType::Face_FS;
@@ -545,7 +547,72 @@ void AFightingCharacter::ReactionStart(UPrimitiveComponent* CollisionBox, float 
 			else if (medium_hit) Reaction = ReactType::Face_LM;
 			else if (big_hit) Reaction = ReactType::Face_LB;
 		}
+	}*/
+
+	FVector actorToAttacker = attacker->GetActorLocation() - GetActorLocation();
+
+	float cos = GetActorForwardVector().CosineAngle2D(actorToAttacker);
+
+	bool isAttackerBehindActor = cos < -0.35;
+
+	
+
+	if (hitArea.Equals(TEXT("head"))) {
+		if (isAttackerBehindActor) Reaction = ReactType::Back;
+		else if (AttackName.Equals(TEXT("Attack_Punch_L_quick")) ) {
+			Reaction = ReactType::Face_FS;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Duck_Punch")) || AttackName.Equals(TEXT("Attack_Kick_scissors"))
+			|| AttackName.Equals(TEXT("Attack_Punch_Combo")) || AttackName.Equals(TEXT("Attack_Punch_R_quick"))) {
+			Reaction = ReactType::Face_FM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Punch_L_uppercut")) || AttackName.Equals(TEXT("Attack_Punch_R_uppercut"))) {
+			Reaction = ReactType::Face_FB;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_backwards_round"))) {
+			Reaction = ReactType::Face_RM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_R_high")) || AttackName.Equals(TEXT("Attack_Kick_R_roundhouse"))) {
+			Reaction = ReactType::Face_LM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_R_high_round")) || AttackName.Equals(TEXT("Attack_Punch_R_swing"))) {
+			Reaction = ReactType::Face_LB;
+		}
 	}
+	else if (hitArea.Equals(TEXT("torso"))) {
+		if (isAttackerBehindActor) Reaction = ReactType::Back;
+		else if (AttackName.Equals(TEXT("Attack_Kick_R_front"))) {
+			Reaction = ReactType::Torso_FS;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_L_front")) || AttackName.Equals(TEXT("Attack_Kick_R_mocap"))) {
+			Reaction = ReactType::Torso_FM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_R_torso")) || AttackName.Equals(TEXT("Attack_Punch_L_uppercut")) || AttackName.Equals(TEXT("Attack_Punch_R_uppercut"))) {
+			Reaction = ReactType::Torso_FB;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_air")) || AttackName.Equals(TEXT("Attack_Kick_R_roundhouse")) 
+			|| AttackName.Equals(TEXT("Attack_Kick_scissors")) || AttackName.Equals(TEXT("Attack_Punch_R_hook")) 
+			|| AttackName.Equals(TEXT("Attack_Punch_R_hook_momentum"))) {
+			Reaction = ReactType::Torso_LM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Punch_L_hook"))) {
+			Reaction = ReactType::Torso_RM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_R_torso"))) {
+			Reaction = ReactType::Torso_FB;
+		}
+
+	}
+	else if (hitArea.Equals(TEXT("chest"))) {
+		if (isAttackerBehindActor) Reaction = ReactType::Back;
+		else if (AttackName.Equals(TEXT("Attack_Kick_air")) || AttackName.Equals(TEXT("Attack_Punch_Combo"))) {
+			Reaction = ReactType::Torso_LM;
+		}
+		else if (AttackName.Equals(TEXT("Attack_Kick_L_roundhouse"))) {
+			Reaction = ReactType::Torso_LB;
+		}
+	}
+
 	CanMove = false;
 	CanJump_ = false;
 	CanDuck = false;
@@ -616,7 +683,7 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 			enemy->ImpactVelocity = GetWeaponVelocity(OverlappedComponent);
 			enemy->ImpactDirection = GetActorForwardVector();
 
-			enemy->ReactionStart(OtherComp, GetWeaponVelocity(OverlappedComponent), Hit.ImpactPoint);
+			enemy->ReactionStart(this, OtherComp, GetWeaponVelocity(OverlappedComponent), Hit.ImpactPoint, GetCurrentMontage()->GetName());
 
 		}
 		
@@ -672,21 +739,18 @@ float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 	return speedForAnimation;
 }
 
-FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
+FVector AFightingCharacter::GetTargetSocketLocation(FName SocketName)
 {
 	FVector TargetLocation(0.0, 0.0, -100.0); // means no target
 
-	//get socket name depending on montage name
-	FName SocketName = TEXT("face_socket");
-	if (MontageName.Equals(TEXT("None")))  return TargetLocation;
-	else if (MontageName.Equals(TEXT("Attack_Kick_R_torso"))) { 
-		SocketName = TEXT("spine_01");
-	}
+	
 
 	// get enemy socket location
-	if (TargetEnemy != NULL) {
+	if (TargetEnemy != NULL && !SocketName.IsNone()) {
+		
 		FVector SocketLocation = TargetEnemy->GetMesh()->GetSocketLocation(SocketName);
-		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("SocketLocation.x: %f, y: %f, z: %f"), SocketLocation.X, SocketLocation.Y, SocketLocation.Z));
+		
+		
 		FVector VectorToTarget = SocketLocation - GetActorLocation();
 		float distance = VectorToTarget.Size();
 		
@@ -695,13 +759,14 @@ FVector AFightingCharacter::GetTargetSocketLocation(FString MontageName)
 		if (distance < 200.0) {
 			float cosAngle = GetActorForwardVector().CosineAngle2D(VectorToTarget);
 			if (cosAngle > 0.75) {
-				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("diatance: %f"), distance));
 				TargetLocation = SocketLocation;
-				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("TargetLocation.Z: %f"), TargetLocation.Z));
-				
 			}
 		}
-		
+
+		/*if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("SocketName: %s"), *SocketName.ToString()));
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("TargetLocation.x: %f, y: %f, z: %f"), TargetLocation.X, TargetLocation.Y, TargetLocation.Z));
+		}*/
 	}
 	return TargetLocation;
 }
@@ -845,6 +910,7 @@ void AFightingCharacter::AttachCollisionBoxesToSockets()
 	LeftThighCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "thigh_l_collision");
 	LeftLegCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "leg_l_collsion");
 }
+
 
 float get_random_float()
 {

@@ -109,7 +109,7 @@ public:
 		float GetSpeedForAnimation(float delta_time);
 
 	UFUNCTION(BlueprintCallable, Category = Animation)
-		FVector GetTargetSocketLocation(FString MontageName);
+		FVector GetTargetSocketLocation(FName SocketName);
 
 	UFUNCTION(BlueprintCallable, Category = Animation)
 		FVector GetFootRLocation();
@@ -187,7 +187,7 @@ public:
 
 	/* React Function */
 
-	void ReactionStart(UPrimitiveComponent* CollisionBox, float ImpactVelocity, FVector ImpactPoint);
+	void ReactionStart(AActor* attacker, UPrimitiveComponent* CollisionBox, float ImpactVelocity, FVector ImpactPoint, FString AttackName);
 
 	UFUNCTION(BlueprintCallable, Category = React)
 		void ReactionEnd();
