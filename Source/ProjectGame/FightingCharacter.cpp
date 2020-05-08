@@ -82,6 +82,7 @@ void AFightingCharacter::BeginPlay()
 // Called every frame
 void AFightingCharacter::Tick(float DeltaTime)
 {
+
 	Super::Tick(DeltaTime);
 
 	RotateToTarget(DeltaTime);
@@ -101,25 +102,48 @@ void AFightingCharacter::Tick(float DeltaTime)
 	}
 
 	//Reposition on Impact - THIS LOOKS LIKE SHITE
-	if (bImpact) {
-		if (ImpactComponent && ImpactVelocity==0) {
-			FVector ComponentDistance = ImpactComponent->GetComponentLocation() - ImpactCompLocation;
-			ImpactVelocity = ComponentDistance.Size() / DeltaTime * 0.02;
-			
-			if (ImpactVelocity != 0) bImpact = false;
-		}
-		
-	}
-	ImpactNormal = ImpactNormal.GetSafeNormal2D();
-
-	FVector newLocation = GetActorLocation() + ImpactNormal * ImpactVelocity;
+	/*ImpactDirection = ImpactDirection.GetSafeNormal2D();
+	FVector newLocation = GetActorLocation() + ImpactDirection * (ImpactVelocity*0.01);
 	SetActorLocation(newLocation, true);
-
-	if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("ImpactVelocity: %f"), ImpactVelocity));
+	
+	//if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("ImpactDirection: %f, %f, %f"), ImpactDirection.X, ImpactDirection.Y, ImpactDirection.Z));
+	//if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("ImpactVelocity: %f"), ImpactVelocity));
 
 	if(ImpactVelocity>0) ImpactVelocity -= ImpactDeceleration * DeltaTime;
-	if(ImpactVelocity<0) ImpactVelocity = 0;
+	if(ImpactVelocity<0) ImpactVelocity = 0;*/
+
+
+	/*if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
+		if (CanAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, TEXT("Can attack"));
+		else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("CanNOT attack"));
+	}*/
 	
+
+	// Tracking velocity of fists/foots when punching/kicking
+	if (bTrackFistsVelocity) {
+		FVector currentPos = LeftFistCollisionBox->GetComponentLocation();
+		LeftFistVelocity = (currentPos - LeftFistLastPos).Size()/DeltaTime;
+		LeftFistLastPos = currentPos;
+
+		currentPos = RightFistCollisionBox->GetComponentLocation();
+		RightFistVelocity = (currentPos - RightFistLastPos).Size() / DeltaTime;
+		RightFistLastPos = currentPos;
+
+	}
+
+	if (bTrackFootsVelocity) {
+		FVector currentPos = LeftFootCollisionBox->GetComponentLocation();
+		LeftFootVelocity = (currentPos - LeftFootLastPos).Size() / DeltaTime;
+		LeftFootLastPos = currentPos;
+
+		currentPos = RightFootCollisionBox->GetComponentLocation();
+		RightFootVelocity = (currentPos - RightFootLastPos).Size() / DeltaTime;
+		RightFootLastPos = currentPos;
+
+	}
+
+
+	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("left fist vel: %f"), LeftFistVelocity));
 
 	//Set Camera 2 location and rotation
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
@@ -241,29 +265,25 @@ void AFightingCharacter::JumpChecking()
 
 void AFightingCharacter::Attack1()
 {
-	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("can add"));
-	//else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("canNOT add"));
+	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("attack1"));
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
-		if (!bAttack1) {
-			if (CanAddNextComboAttack) {
-				if (IsDucking) ComboSequenceStr = TEXT("0");
-				else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
-				else if (TauntPressed) { 
-					if( get_random_float() <= 0.50) ComboSequenceStr = TEXT("5");
-					else ComboSequenceStr = TEXT("55");
-				}
-				else ComboSequenceStr += TEXT("1");
-				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
-				CanAddNextComboAttack = false;
-				CanMove = false;
-				CanBlock = false;
-				CanJump_ = false;
-				CanDuck = false;
-
-				Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
-				Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
+		if (CanAddNextComboAttack) {
+			if (IsDucking) ComboSequenceStr = TEXT("0");
+			else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
+			else if (TauntPressed) { 
+				if( get_random_float() <= 0.50) ComboSequenceStr = TEXT("5");
+				else ComboSequenceStr = TEXT("55");
 			}
-			bAttack1 = true;
+			else ComboSequenceStr += TEXT("1");
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
+			CanAddNextComboAttack = false;
+			CanMove = false;
+			CanBlock = false;
+			CanJump_ = false;
+			CanDuck = false;
+
+			Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
+			Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 		}
 		IsAttacking = true;
 	}
@@ -278,25 +298,22 @@ void AFightingCharacter::StopAttack1()
 void AFightingCharacter::Attack2()
 {
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
-		if (!bAttack2) {
-			if (CanAddNextComboAttack) { 
-				if (IsDucking) ComboSequenceStr = TEXT("0");
-				else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
-				else if (TauntPressed) {
-					if (get_random_float() <= 0.80) ComboSequenceStr = TEXT("6");
-					else ComboSequenceStr = TEXT("66");
-				}
-				else ComboSequenceStr += TEXT("2");
-				CanAddNextComboAttack = false;
-				CanMove = false;
-				CanBlock = false;
-				CanJump_ = false;
-				CanDuck = false;
-
-				Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
-				Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
+		if (CanAddNextComboAttack) { 
+			if (IsDucking) ComboSequenceStr = TEXT("0");
+			else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
+			else if (TauntPressed) {
+				if (get_random_float() <= 0.80) ComboSequenceStr = TEXT("6");
+				else ComboSequenceStr = TEXT("66");
 			}
-			bAttack2 = true;
+			else ComboSequenceStr += TEXT("2");
+			CanAddNextComboAttack = false;
+			CanMove = false;
+			CanBlock = false;
+			CanJump_ = false;
+			CanDuck = false;
+
+			Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
+			Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 		}
 		IsAttacking = true;
 	}
@@ -389,6 +406,18 @@ AFightingCharacter* AFightingCharacter::GetTargetEnemy() {
 	return TargetEnemy;
 }
 
+float AFightingCharacter::GetWeaponVelocity(UPrimitiveComponent* WeaponComponent) {
+
+	float velocity = 0.0;
+
+	if (WeaponComponent == LeftFistCollisionBox) velocity = LeftFistVelocity;
+	else if(WeaponComponent == RightFistCollisionBox) velocity = RightFistVelocity;
+	else if (WeaponComponent == LeftFootCollisionBox || WeaponComponent == LeftLegCollisionBox) velocity = LeftFootVelocity;
+	else if (WeaponComponent == RightFootCollisionBox || WeaponComponent == RightLegCollisionBox) velocity = RightFootVelocity;
+
+	return velocity;
+}
+
 
 void AFightingCharacter::PunchAttackStart()
 {
@@ -399,6 +428,10 @@ void AFightingCharacter::PunchAttackStart()
 	RightFistCollisionBox->SetCollisionProfileName("Weapon");
 	RightFistCollisionBox->SetNotifyRigidBodyCollision(true);
 	RightFistCollisionBox->SetGenerateOverlapEvents(true);
+
+	bTrackFistsVelocity = true;
+	LeftFistLastPos = LeftFistCollisionBox->GetComponentLocation();
+	RightFistLastPos = RightFistCollisionBox->GetComponentLocation();
 }
 
 void AFightingCharacter::PunchAttackEnd()
@@ -410,6 +443,8 @@ void AFightingCharacter::PunchAttackEnd()
 	RightFistCollisionBox->SetCollisionProfileName("NoCollision");
 	RightFistCollisionBox->SetNotifyRigidBodyCollision(false);
 	RightFistCollisionBox->SetGenerateOverlapEvents(false);
+
+	bTrackFistsVelocity = false;
 }
 
 void AFightingCharacter::KickAttackStart()
@@ -424,6 +459,10 @@ void AFightingCharacter::KickAttackStart()
 
 	LeftLegCollisionBox->SetCollisionProfileName("Weapon");
 	RightLegCollisionBox->SetCollisionProfileName("Weapon");
+
+	bTrackFootsVelocity = true;
+	LeftFootLastPos = LeftFootCollisionBox->GetComponentLocation();
+	RightFootLastPos = RightFootCollisionBox->GetComponentLocation();
 }
 
 void AFightingCharacter::KickAttackEnd()
@@ -438,16 +477,89 @@ void AFightingCharacter::KickAttackEnd()
 
 	LeftLegCollisionBox->SetCollisionProfileName("DamageBox");
 	RightLegCollisionBox->SetCollisionProfileName("DamageBox");
+
+	bTrackFootsVelocity = false;
 }
 
-void AFightingCharacter::ReactionStart(FString CollisionBoxName) {
+void AFightingCharacter::ReactionStart(UPrimitiveComponent* CollisionBox, float ImpactVel, FVector ImpactPoint) {
+	Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
+	Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
+
+	FVector BoxCentre = CollisionBox->GetComponentLocation();
+	
+	FString CollisionBoxName = CollisionBox->GetName();
 	FString hitArea = DamageCBCategory[CollisionBoxName];
+
+	FVector CentreToImpact = ImpactPoint - BoxCentre;
+
+	float cosForward = GetActorForwardVector().CosineAngle2D(CentreToImpact);
+	float cosRight = GetActorRightVector().CosineAngle2D(CentreToImpact);
+
+	bool front, right, left, back, small_hit, medium_hit, big_hit;
+	front = cosForward > 0.707;
+	back = cosForward < -0.707;
+	right = cosRight > 0.707;
+	left = cosRight < -0.707;
+
+	GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact vel: %f"), ImpactVel));
+	if (ImpactVel < 400) small_hit = true;
+	else if (ImpactVel > 800) big_hit = true;
+	else medium_hit = true;
+
+	if (hitArea.Compare(TEXT("chest")) == 0) {
+		if (ImpactPoint.Z > BoxCentre.Z) hitArea = TEXT("head");
+		else hitArea = TEXT("torso");
+	}
 	if (hitArea.Compare(TEXT("torso")) == 0) {
-		Reaction = ReactType::StomachHit;
+		if (back) Reaction = ReactType::Back;
+		else if (front) {
+			if (small_hit) Reaction = ReactType::Torso_FS;
+			else if(medium_hit) Reaction = ReactType::Torso_FM;
+			else if (big_hit) Reaction = ReactType::Torso_FB;
+		} 
+		else if (right) {
+			if (small_hit) Reaction = ReactType::Torso_RS;
+			else if (medium_hit) Reaction = ReactType::Torso_RM;
+			else if (big_hit) Reaction = ReactType::Torso_RB;
+		}
+		else if (left) {
+			if (small_hit) Reaction = ReactType::Torso_LS;
+			else if (medium_hit) Reaction = ReactType::Torso_LM;
+			else if (big_hit) Reaction = ReactType::Torso_LB;
+		}
 	}
 	else if (hitArea.Compare(TEXT("head")) == 0) {
-		Reaction = ReactType::FaceHit;
+		if (back) Reaction = ReactType::Back;
+		else if (front) {
+			if (small_hit) Reaction = ReactType::Face_FS;
+			else if (medium_hit) Reaction = ReactType::Face_FM;
+			else if (big_hit) Reaction = ReactType::Face_FB;
+		}
+		else if (right) {
+			if (small_hit) Reaction = ReactType::Face_RS;
+			else if (medium_hit) Reaction = ReactType::Face_RM;
+			else if (big_hit) Reaction = ReactType::Face_RB;
+		}
+		else if (left) {
+			if (small_hit) Reaction = ReactType::Face_LS;
+			else if (medium_hit) Reaction = ReactType::Face_LM;
+			else if (big_hit) Reaction = ReactType::Face_LB;
+		}
 	}
+	CanMove = false;
+	CanJump_ = false;
+	CanDuck = false;
+	CanBlock = false;
+	CanAttack = false;
+}
+
+void AFightingCharacter::ReactionEnd() {
+	Reaction = ReactType::NoReact;
+	CanMove = true;
+	CanJump_ = true;
+	CanDuck = true;
+	CanBlock = true;
+	CanAttack = true;
 }
 
 void AFightingCharacter::OnAttackHit(UPrimitiveComponent * HitComponent, AActor * OtherActor, UPrimitiveComponent * OtherComp, FVector NormalImpulse, const FHitResult & Hit)
@@ -469,36 +581,7 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
 	if (OtherActor != this) {
 		if (AFightingCharacter* enemy = Cast<AFightingCharacter>(OtherActor)) {
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
 			FString hitArea = DamageCBCategory[OtherComp->GetName()];
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("area: %s"), *hitArea));
-			enemy->ReactionStart(OtherComp->GetName());
-
-			/*FVector WeaponLocation = OverlappedComponent->GetComponentLocation();
-			FVector DamageBoxLocation = OtherComp->GetComponentLocation();
-			FVector WeaponHitLocation = FVector();
-			FVector DamageBoxHitLocation = FVector();
-
-			float rsult = OtherComp->GetClosestPointOnCollision(WeaponLocation, DamageBoxHitLocation);
-			float rsult2 = OverlappedComponent->GetClosestPointOnCollision(DamageBoxLocation, WeaponHitLocation);
-			
-			FVector DirectionToMove = WeaponHitLocation - DamageBoxHitLocation;
-			DirectionToMove.Z = 0;
-
-			FVector NewLocation = enemy->GetActorLocation() + DirectionToMove;
-
-			enemy->SetActorLocation(NewLocation);
-
-			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("DirectionToMove: %f, %f, %f"), DirectionToMove.X, DirectionToMove.Y, DirectionToMove.Z));
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("HitLocation: %f, %f, %f"), HitLocation.X, HitLocation.Y, HitLocation.Z));
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("return: %f"), rsult));
-
-			FVector impact_point = OverlappedComponent->GetComponentLocation();
-			float dist = SweepResult.Distance;
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("dist: %f"), dist));*/
-
 
 			// SweepResult is unpopulated for OnOverlapBegin - a bug from Unreal. Solution to get the HitResult:
 		    // https://answers.unrealengine.com/questions/165523/on-component-begin-overlap-sweep-result-not-popula.html
@@ -527,31 +610,14 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 					break;
 				}
 			}
-
 			/************************************/
 
-			/*FVector impact_point = Hit.Normal;
-			FVector impact_normal = Hit.ImpactNormal;
-			float pen = Hit.PenetrationDepth;
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("impact_normal: %f, %f, %f"), impact_normal.X, impact_normal.Y, impact_normal.Z));
-			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
-			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("dist: %f"), pen));*/
 
-			enemy->ImpactComponent = OverlappedComponent;
-			enemy->ImpactCompLocation = OverlappedComponent->GetComponentLocation();
-			enemy->bImpact = true;
-			//enemy->ImpactNormal = -Hit.ImpactNormal;
+			enemy->ImpactVelocity = GetWeaponVelocity(OverlappedComponent);
 			enemy->ImpactDirection = GetActorForwardVector();
 
-			if (hitArea.Compare("head") == 0) {
-				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, OtherComp->GetName());
-				//enemy->FaceHitEvent();
-				
-			}
-			else {
-				//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, OtherComp->GetName());
-			}
+			enemy->ReactionStart(OtherComp, GetWeaponVelocity(OverlappedComponent), Hit.ImpactPoint);
+
 		}
 		
 	}
@@ -657,6 +723,7 @@ void AFightingCharacter::ClearComboSequence()
 	CanBlock = true;
 	CanJump_ = true;
 	CanDuck = true;
+	CanAttack = true;
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Orange, TEXT("CLEARED"));
 }
 
@@ -692,7 +759,7 @@ void AFightingCharacter::CollisionBoxesInit()
 
 	ChestCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("ChestCollisionBox"));
 	DamageCollisionBoxes.push_back(ChestCollisionBox);
-	DamageCBCategory[ChestCollisionBox->GetName()] = "torso";
+	DamageCBCategory[ChestCollisionBox->GetName()] = "chest";
 
 	TorsoCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TorsoCollisionBox"));
 	DamageCollisionBoxes.push_back(TorsoCollisionBox);

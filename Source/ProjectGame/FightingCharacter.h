@@ -25,8 +25,8 @@ UENUM(BlueprintType)
 enum ReactType
 {
 	NoReact,
-	FaceHit,
-	StomachHit
+	Face_FS, Face_FM, Face_FB, Face_LS, Face_LM, Face_LB, Face_RS, Face_RM, Face_RB,
+	Torso_FS, Torso_FM, Torso_FB, Torso_LS, Torso_LM, Torso_LB, Torso_RS, Torso_RM, Torso_RB, Back
 };
 
 UCLASS()
@@ -101,6 +101,8 @@ public:
 	void SetTargetEnemy(AFightingCharacter* enemy);
 	void RotateToTarget(float DeltaTime);
 	AFightingCharacter* GetTargetEnemy();
+	float GetWeaponVelocity(UPrimitiveComponent* WeaponComponent);
+
 	bool bDefeated;
 
 	UFUNCTION(BlueprintCallable, Category = Animation)
@@ -185,7 +187,10 @@ public:
 
 	/* React Function */
 
-	void ReactionStart(FString CollisionBoxName);
+	void ReactionStart(UPrimitiveComponent* CollisionBox, float ImpactVelocity, FVector ImpactPoint);
+
+	UFUNCTION(BlueprintCallable, Category = React)
+		void ReactionEnd();
 
 
 
@@ -208,13 +213,9 @@ public:
 		void OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	/* For Impact Response */
-
-	UPrimitiveComponent* ImpactComponent;
-	FVector ImpactCompLocation;
-	bool bImpact;
 	FVector ImpactDirection;
 	float ImpactVelocity;
-	float ImpactDeceleration = 200.0f;
+	float ImpactDeceleration = 10000.0f;
 
 protected:
 	// Called when the game starts or when spawned
@@ -239,6 +240,17 @@ protected:
 
 	FVector Foot_R_Location;
 	FVector Foot_L_Location;
+
+	bool bTrackFistsVelocity;
+	bool bTrackFootsVelocity;
+	float RightFistVelocity;
+	float LeftFistVelocity;
+	float RightFootVelocity;
+	float LeftFootVelocity;
+	FVector RightFistLastPos;
+	FVector LeftFistLastPos;
+	FVector RightFootLastPos;
+	FVector LeftFootLastPos;
 
 	FVector Cam2Location;
 	FVector Cam2LookAt;
