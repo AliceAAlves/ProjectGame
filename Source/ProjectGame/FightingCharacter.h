@@ -252,6 +252,11 @@ protected:
 	FVector RightFootLastPos;
 	FVector LeftFootLastPos;
 
+	float RightFistVelocity_max;
+	float LeftFistVelocity_max;
+	float RightFootVelocity_max;
+	float LeftFootVelocity_max;
+
 	FVector Cam2Location;
 	FVector Cam2LookAt;
 	FRotator ControllerRotation;
