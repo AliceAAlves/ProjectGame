@@ -120,6 +120,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Attack)
 		void ClearComboSequence();
 
+	UFUNCTION(BlueprintCallable, Category = Getter)
+		FVector GetEnemyLocation();
+
 
 	/******************* Collision Boxes ************************/
 
@@ -187,12 +190,11 @@ public:
 
 	/* React Function */
 
-	void ReactionStart(AActor* attacker, UPrimitiveComponent* CollisionBox, float ImpactVelocity, FVector ImpactPoint, FString AttackName);
-
+	void ReactionStart(AActor* attacker, UPrimitiveComponent* CollisionBox, float ImpactVel, FVector ImpactPoint, FString AttackName);
 	UFUNCTION(BlueprintCallable, Category = React)
 		void ReactionEnd();
 
-
+	void InflictDamage(UPrimitiveComponent* CollisionBox, float ImpactVel);
 
 	/**
 	* Triggered when the collision hits event fires between our weapon and enemy entities
@@ -216,18 +218,21 @@ public:
 	FVector ImpactDirection;
 	float ImpactVelocity;
 	float ImpactDeceleration = 10000.0f;
+	std::map <FString, bool> IsDamageBoxOverlapping;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	void CollisionBoxesInit();
 	void AttachCollisionBoxesToSockets();
+	void VariablesInit();
 	
 	float speedForAnimation;
 	std::vector<UBoxComponent*> DamageCollisionBoxes;
 	std::vector<UBoxComponent*> WeaponCollisionBoxes;
 	std::map <FString, FString> DamageCBCategory;
 	std::map <FString, FString> WeaponCBCategory;
+	std::vector <FString> DamageCBCategories;
 
 	AFightingCharacter* TargetEnemy;
 
@@ -264,6 +269,12 @@ protected:
 
 	APlayerController* ThisPlayerController;
 	bool IsPlayableChar = false;
+
+	std::map <FString, float> DamagePotential;
+	std::map <FString, float> BaseDamage;
+	std::map <FString, float> LastDamageTakenTime;
+	float HealthPoints = 1;
+	float PotentialIncrement = 0.05;
 
 public:	
 	// Called every frame

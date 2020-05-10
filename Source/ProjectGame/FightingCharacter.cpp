@@ -5,6 +5,7 @@
 #include "Engine/EngineTypes.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Math/UnrealMathUtility.h"
+#include "RenderCore.h"
 
 #include <vector>
 #include <random>
@@ -76,6 +77,8 @@ void AFightingCharacter::BeginPlay()
 		weapon->OnComponentBeginOverlap.AddDynamic(this, &AFightingCharacter::OnAttackOverlapBegin);
 		weapon->OnComponentEndOverlap.AddDynamic(this, &AFightingCharacter::OnAttackOverlapEnd);
 	}
+
+	VariablesInit();
 
 }
 
@@ -152,7 +155,15 @@ void AFightingCharacter::Tick(float DeltaTime)
 	}
 
 
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("left fist vel: %f"), LeftFistVelocity));
+
+	/*for (UBoxComponent* db : DamageCollisionBoxes) {
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("%s is overlapping"), *db->GetName()));
+	}*/
+
+	if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
+		
+		
+	}
 
 	//Set Camera 2 location and rotation
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
@@ -582,10 +593,10 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 			|| AttackName.Equals(TEXT("Attack_Punch_Combo"))) {
 			Reaction = ReactType::Face_FS;
 		}
-		else if (AttackName.Equals(TEXT("Attack_Kick_scissors")) || AttackName.Equals(TEXT("Attack_Punch_R_quick"))) {
+		else if ( AttackName.Equals(TEXT("Attack_Punch_R_quick"))) {
 			Reaction = ReactType::Face_FM;
 		}
-		else if (AttackName.Equals(TEXT("Attack_Punch_L_uppercut")) || AttackName.Equals(TEXT("Attack_Punch_R_uppercut"))) {
+		else if (AttackName.Equals(TEXT("Attack_Kick_scissors")) || AttackName.Equals(TEXT("Attack_Punch_L_uppercut")) || AttackName.Equals(TEXT("Attack_Punch_R_uppercut"))) {
 			Reaction = ReactType::Face_FB;
 		}
 		else if (AttackName.Equals(TEXT("Attack_Kick_backwards_round"))) {
@@ -650,6 +661,28 @@ void AFightingCharacter::ReactionEnd() {
 	CanAttack = true;
 }
 
+void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float ImpactVel)
+{
+	FString hit_area = DamageCBCategory[CollisionBox->GetName()];
+	if (hit_area.IsEmpty()) return;
+	if (hit_area.Equals(TEXT("chest"))) hit_area = TEXT("torso");
+	float current_time = GetWorld()->GetTimeSeconds();
+	if (current_time - LastDamageTakenTime[hit_area] > 0.5) {
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
+		
+		float base_damage = BaseDamage[hit_area];
+		float damage_multiplier = DamagePotential[hit_area];
+		float damage_taken = base_damage * damage_multiplier * ImpactVel/800;
+		HealthPoints -= damage_taken;
+		DamagePotential[hit_area] += PotentialIncrement;
+		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
+		LastDamageTakenTime[hit_area] = current_time;
+
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
+	}
+}
+
 void AFightingCharacter::OnAttackHit(UPrimitiveComponent * HitComponent, AActor * OtherActor, UPrimitiveComponent * OtherComp, FVector NormalImpulse, const FHitResult & Hit)
 {
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, __FUNCTION__);
@@ -700,6 +733,10 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 			}
 			/************************************/
 
+			enemy->IsDamageBoxOverlapping[OtherComp->GetName()] = true;
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("%s is overlapping"), *OtherComp->GetName()));
+			enemy->InflictDamage(OtherComp, GetWeaponVelocity(OverlappedComponent));
+			
 			enemy->ImpactVelocity = GetWeaponVelocity(OverlappedComponent);
 			enemy->ImpactDirection = GetActorForwardVector();
 
@@ -713,6 +750,12 @@ void AFightingCharacter::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedCompo
 {
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, __FUNCTION__);
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
+
+	if (OtherActor != this && OtherActor != NULL) {
+		if (AFightingCharacter* enemy = Cast<AFightingCharacter>(OtherActor)) {
+			enemy->IsDamageBoxOverlapping[OtherComp->GetName()] = false;
+		}
+	}
 }
 
 void AFightingCharacter::RotateToTarget(float DeltaTime) {
@@ -885,6 +928,7 @@ void AFightingCharacter::CollisionBoxesInit()
 	WeaponCollisionBoxes.push_back(LeftLegCollisionBox);
 	DamageCBCategory[LeftLegCollisionBox->GetName()] = "left_leg";
 	WeaponCBCategory[LeftLegCollisionBox->GetName()] = "kick";
+	
 
 	for (UBoxComponent* element : WeaponCollisionBoxes)
 	{
@@ -900,6 +944,7 @@ void AFightingCharacter::CollisionBoxesInit()
 		element->SetCollisionProfileName("DamageBox");
 		element->SetNotifyRigidBodyCollision(true);
 		element->SetHiddenInGame(false);
+		IsDamageBoxOverlapping[element->GetName()] = false;
 	}
 
 }
@@ -927,6 +972,35 @@ void AFightingCharacter::AttachCollisionBoxesToSockets()
 	LeftLegCollisionBox->AttachToComponent(GetMesh(), AttachmentRules, "leg_l_collsion");
 }
 
+void AFightingCharacter::VariablesInit()
+{
+	DamageCBCategories.push_back("head");
+	DamageCBCategories.push_back("torso");
+	DamageCBCategories.push_back("right_arm");
+	DamageCBCategories.push_back("left_arm");
+	DamageCBCategories.push_back("right_leg");
+	DamageCBCategories.push_back("left_leg");
+	
+	float current_time = GetWorld()->GetTimeSeconds();
+
+	for (FString cat : DamageCBCategories) {
+		DamagePotential[cat] = 1.0;
+		LastDamageTakenTime[cat] = current_time;
+	}
+
+	BaseDamage["head"] = 0.02;
+	BaseDamage["torso"] = 0.01;
+	BaseDamage["right_arm"] = 0.005;
+	BaseDamage["left_arm"] = 0.005;
+	BaseDamage["right_leg"] = 0.005;
+	BaseDamage["left_leg"] = 0.005;
+}
+
+FVector AFightingCharacter::GetEnemyLocation() {
+	FVector target_location;
+	if(TargetEnemy != NULL) target_location = TargetEnemy->GetActorLocation();
+	return target_location;
+}
 
 float get_random_float()
 {
