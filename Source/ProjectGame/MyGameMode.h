@@ -15,6 +15,8 @@ class PROJECTGAME_API AMyGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
+public:
+
 	AMyGameMode();
 
 	virtual void BeginPlay() override;
@@ -28,9 +30,19 @@ class PROJECTGAME_API AMyGameMode : public AGameMode
 	UPROPERTY(EditAnywhere)
 		FRotator EnemyStartRotation;
 
+	UPROPERTY(BlueprintReadOnly)
+		AFightingCharacter* Player;
+
+	UPROPERTY(BlueprintReadOnly)
+		AFightingCharacter* Enemy;
+
+	UPROPERTY(EditAnywhere, Category = "UI HUD")
+		TSubclassOf<UUserWidget> HealthBar_Widget_Class;
+	UUserWidget* HealthBar_Widget;
+
 	void SpawnEnemy();
 
-private:
-	AFightingCharacter* Player;
-	AFightingCharacter* Enemy;
+//private:
+	
+	
 };

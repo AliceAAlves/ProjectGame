@@ -426,6 +426,14 @@ AFightingCharacter* AFightingCharacter::GetTargetEnemy() {
 	return TargetEnemy;
 }
 
+float AFightingCharacter::GetHealthPoints() {
+	return HealthPoints;
+}
+
+float AFightingCharacter::GetDamagePotential(FString bodyPart) {
+	return DamagePotential[bodyPart];
+}
+
 float AFightingCharacter::GetWeaponVelocity(UPrimitiveComponent* WeaponComponent) {
 
 	float velocity = 0.0;
@@ -668,18 +676,26 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 	if (hit_area.Equals(TEXT("chest"))) hit_area = TEXT("torso");
 	float current_time = GetWorld()->GetTimeSeconds();
 	if (current_time - LastDamageTakenTime[hit_area] > 0.5) {
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
 		
 		float base_damage = BaseDamage[hit_area];
 		float damage_multiplier = DamagePotential[hit_area];
 		float damage_taken = base_damage * damage_multiplier * ImpactVel/800;
 		HealthPoints -= damage_taken;
+		if (HealthPoints < 0) HealthPoints = 0;
 		DamagePotential[hit_area] += PotentialIncrement;
 		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
 		LastDamageTakenTime[hit_area] = current_time;
 
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
+	
+		if (hit_area.Equals(TEXT("torso"))) HitTorso = true;
+		else if (hit_area.Equals(TEXT("head"))) HitHead = true;
+		else if (hit_area.Equals(TEXT("left_arm"))) HitArmL = true;
+		else if (hit_area.Equals(TEXT("right_arm"))) HitArmL = true;
+		else if (hit_area.Equals(TEXT("left_leg"))) HitLegL = true;
+		else if (hit_area.Equals(TEXT("right_Leg"))) HitLegR = true;
 	}
 }
 

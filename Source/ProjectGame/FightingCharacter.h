@@ -123,6 +123,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Getter)
 		FVector GetEnemyLocation();
 
+	UFUNCTION(BlueprintCallable, Category = Getter)
+		float GetHealthPoints();
+
+	UFUNCTION(BlueprintCallable, Category = Getter)
+		float GetDamagePotential(FString bodypart);
 
 	/******************* Collision Boxes ************************/
 
@@ -219,6 +224,19 @@ public:
 	float ImpactVelocity;
 	float ImpactDeceleration = 10000.0f;
 	std::map <FString, bool> IsDamageBoxOverlapping;
+
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitHead = false;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitTorso = false;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitArmL = false;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitArmR = false;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitLegL = false;
+	UPROPERTY(BlueprintReadWrite, Category = Attack)
+		bool HitLegR = false;
 
 protected:
 	// Called when the game starts or when spawned

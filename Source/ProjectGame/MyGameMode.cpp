@@ -25,7 +25,11 @@ void AMyGameMode::BeginPlay()
 		SpawnEnemy();
 	}
 	
+	if (HealthBar_Widget_Class != nullptr) {
 
+		HealthBar_Widget = CreateWidget(World, HealthBar_Widget_Class);
+		HealthBar_Widget->AddToViewport();
+	}
 	
 
 	//FTimerHandle UnusedHandle;
