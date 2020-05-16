@@ -154,7 +154,14 @@ void AFightingCharacter::Tick(float DeltaTime)
 		if (RightFootVelocity > RightFootVelocity_max) RightFootVelocity_max = RightFootVelocity;
 	}
 
-
+	// Track last time an arm was overlapping while blocking
+	if (IsBlocking) {
+		if(IsDamageBoxOverlapping[TEXT("RightArmCollisionBox")] || IsDamageBoxOverlapping[TEXT("RightForearmCollisionBox")]
+			|| IsDamageBoxOverlapping[TEXT("LeftArmCollisionBox")] || IsDamageBoxOverlapping[TEXT("LeftForearmCollisionBox")])
+			LastArmsOverlapTime = GetWorld()->GetTimeSeconds();
+	}
+	if(HitHead) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, FString::Printf(TEXT("HitHead")));
+	if (HitArmL) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, FString::Printf(TEXT("HitArmL")));
 
 	/*for (UBoxComponent* db : DamageCollisionBoxes) {
 		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("%s is overlapping"), *db->GetName()));
@@ -590,13 +597,17 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 	}*/
 
 	FVector actorToAttacker = attacker->GetActorLocation() - GetActorLocation();
-
 	float cos = GetActorForwardVector().CosineAngle2D(actorToAttacker);
-
 	bool isAttackerBehindActor = cos < -0.35;
+	bool isAttackerInFrontOfActor = cos > 0.35;
 
+	float current_time = GetWorld()->GetTimeSeconds();
+	
 	if (hitArea.Equals(TEXT("head"))) {
-		if (isAttackerBehindActor) Reaction = ReactType::Back;
+		//if (IsBlocking && isAttackerInFrontOfActor) return;
+		if (IsBlocking && current_time - LastArmsOverlapTime < 1.0) return;
+		else if (IsBlocking) StopBlocking();
+		if (isAttackerBehindActor) Reaction = ReactType::Back; 
 		else if (AttackName.Equals(TEXT("Attack_Duck_Punch")) || AttackName.Equals(TEXT("Attack_Punch_L_quick")) 
 			|| AttackName.Equals(TEXT("Attack_Punch_Combo"))) {
 			Reaction = ReactType::Face_FS;
@@ -618,6 +629,7 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 		}
 	}
 	else if (hitArea.Equals(TEXT("torso"))) {
+		if (IsBlocking) StopBlocking();
 		if (isAttackerBehindActor) Reaction = ReactType::Back;
 		else if (AttackName.Equals(TEXT("Attack_Kick_R_front")) || AttackName.Equals(TEXT("Attack_Kick_L_front"))) {
 			Reaction = ReactType::Torso_FS;
@@ -642,6 +654,9 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 
 	}
 	else if (hitArea.Equals(TEXT("chest"))) {
+		//if (IsBlocking && isAttackerInFrontOfActor) return;
+		if (IsBlocking && current_time - LastArmsOverlapTime < 1.0) return;
+		else if (IsBlocking) StopBlocking();
 		if (isAttackerBehindActor) Reaction = ReactType::Back;
 		else if (AttackName.Equals(TEXT("Attack_Kick_air")) || AttackName.Equals(TEXT("Attack_Punch_Combo")) 
 			|| AttackName.Equals(TEXT("Attack_Punch_R_hook")) || AttackName.Equals(TEXT("Attack_Punch_R_hook_momentum"))
@@ -673,27 +688,43 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 {
 	FString hit_area = DamageCBCategory[CollisionBox->GetName()];
 	if (hit_area.IsEmpty()) return;
+
+	if (IsBlocking && (hit_area.Equals(TEXT("chest")) || hit_area.Equals(TEXT("head")))) {
+		/*FVector actorToEnemy = TargetEnemy->GetActorLocation() - GetActorLocation();
+		float cos = GetActorForwardVector().CosineAngle2D(actorToEnemy);
+		bool isAttackerInFrontOfActor = cos > 0.35; 
+		if (isAttackerInFrontOfActor) return;*/
+		float current_time = GetWorld()->GetTimeSeconds();
+		if (current_time - LastArmsOverlapTime < 1.0) {
+			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("Successfull block ")));
+			return;
+		}
+	}
+
 	if (hit_area.Equals(TEXT("chest"))) hit_area = TEXT("torso");
 	float current_time = GetWorld()->GetTimeSeconds();
 	if (current_time - LastDamageTakenTime[hit_area] > 0.5) {
-		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
 		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
 		
 		float base_damage = BaseDamage[hit_area];
 		float damage_multiplier = DamagePotential[hit_area];
 		float damage_taken = base_damage * damage_multiplier * ImpactVel/800;
 		HealthPoints -= damage_taken;
-		if (HealthPoints < 0) HealthPoints = 0;
+		if (HealthPoints < 0) { 
+			HealthPoints = 0; 
+			bDefeated = true;
+		}
 		DamagePotential[hit_area] += PotentialIncrement;
 		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
 		LastDamageTakenTime[hit_area] = current_time;
 
-		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
+		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
 	
 		if (hit_area.Equals(TEXT("torso"))) HitTorso = true;
 		else if (hit_area.Equals(TEXT("head"))) HitHead = true;
 		else if (hit_area.Equals(TEXT("left_arm"))) HitArmL = true;
-		else if (hit_area.Equals(TEXT("right_arm"))) HitArmL = true;
+		else if (hit_area.Equals(TEXT("right_arm"))) HitArmR = true;
 		else if (hit_area.Equals(TEXT("left_leg"))) HitLegL = true;
 		else if (hit_area.Equals(TEXT("right_Leg"))) HitLegR = true;
 	}

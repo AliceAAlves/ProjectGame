@@ -89,7 +89,11 @@ public:
 	void StopAttack1();
 	void Attack2();
 	void StopAttack2();
+
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Block();
+
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopBlocking();
 	void Duck();
 	void StopDucking();
@@ -103,7 +107,8 @@ public:
 	AFightingCharacter* GetTargetEnemy();
 	float GetWeaponVelocity(UPrimitiveComponent* WeaponComponent);
 
-	bool bDefeated;
+	UPROPERTY(BlueprintReadOnly, Category = Getter)
+		bool bDefeated;
 
 	UFUNCTION(BlueprintCallable, Category = Animation)
 		float GetSpeedForAnimation(float delta_time);
@@ -224,18 +229,19 @@ public:
 	float ImpactVelocity;
 	float ImpactDeceleration = 10000.0f;
 	std::map <FString, bool> IsDamageBoxOverlapping;
+	float LastArmsOverlapTime;
 
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitHead = false;
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitTorso = false;
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitArmL = false;
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitArmR = false;
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitLegL = false;
-	UPROPERTY(BlueprintReadWrite, Category = Attack)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hit)
 		bool HitLegR = false;
 
 protected:

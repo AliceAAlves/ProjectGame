@@ -38,7 +38,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "UI HUD")
 		TSubclassOf<UUserWidget> HealthBar_Widget_Class;
-	UUserWidget* HealthBar_Widget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UI HUD")
+		UUserWidget* HealthBar_Widget;
 
 	void SpawnEnemy();
 
