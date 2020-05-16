@@ -160,8 +160,6 @@ void AFightingCharacter::Tick(float DeltaTime)
 			|| IsDamageBoxOverlapping[TEXT("LeftArmCollisionBox")] || IsDamageBoxOverlapping[TEXT("LeftForearmCollisionBox")])
 			LastArmsOverlapTime = GetWorld()->GetTimeSeconds();
 	}
-	if(HitHead) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, FString::Printf(TEXT("HitHead")));
-	if (HitArmL) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, FString::Printf(TEXT("HitArmL")));
 
 	/*for (UBoxComponent* db : DamageCollisionBoxes) {
 		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("%s is overlapping"), *db->GetName()));
@@ -176,7 +174,7 @@ void AFightingCharacter::Tick(float DeltaTime)
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
 		FVector ToTargetDirection = TargetEnemy->GetActorLocation() - GetActorLocation();
 		float distance = ToTargetDirection.Size();
-		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("distance: %f"), distance));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("distance: %f"), distance));
 
 		float distanceOffset = 0.0f;
 		if (distance > 500.0f) {
@@ -292,7 +290,6 @@ void AFightingCharacter::JumpChecking()
 
 void AFightingCharacter::Attack1()
 {
-	//if(CanAddNextComboAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, TEXT("attack1"));
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (CanAddNextComboAttack) {
 			if (IsDucking) ComboSequenceStr = TEXT("0");
@@ -668,11 +665,14 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 		}
 	}
 
-	CanMove = false;
-	CanJump_ = false;
-	CanDuck = false;
-	CanBlock = false;
-	CanAttack = false;
+	if (Reaction != ReactType::NoReact) {
+		CanMove = false;
+		CanJump_ = false;
+		CanDuck = false;
+		CanBlock = false;
+		CanAttack = false;
+	}
+	
 }
 
 void AFightingCharacter::ReactionEnd() {
@@ -682,6 +682,8 @@ void AFightingCharacter::ReactionEnd() {
 	CanDuck = true;
 	CanBlock = true;
 	CanAttack = true;
+	CanAddNextComboAttack = true;
+	if (IsBlocking) StopBlocking();
 }
 
 void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float ImpactVel)
@@ -696,15 +698,16 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 		if (isAttackerInFrontOfActor) return;*/
 		float current_time = GetWorld()->GetTimeSeconds();
 		if (current_time - LastArmsOverlapTime < 1.0) {
-			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("Successfull block ")));
+			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("Successfull block ")));
 			return;
 		}
 	}
 
 	if (hit_area.Equals(TEXT("chest"))) hit_area = TEXT("torso");
+
 	float current_time = GetWorld()->GetTimeSeconds();
 	if (current_time - LastDamageTakenTime[hit_area] > 0.5) {
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
 		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
 		
 		float base_damage = BaseDamage[hit_area];
@@ -719,7 +722,7 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
 		LastDamageTakenTime[hit_area] = current_time;
 
-		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
+		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("damage taken: %d, DamagePotential: %f, HP: %d "), (int)(damage_taken * 1000), DamagePotential[hit_area], (int)(HealthPoints * 1000)));
 	
 		if (hit_area.Equals(TEXT("torso"))) HitTorso = true;
 		else if (hit_area.Equals(TEXT("head"))) HitHead = true;

@@ -85,26 +85,33 @@ public:
 	void Run();
 	void StopRunning();
 	void JumpChecking();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Attack1();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopAttack1();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Attack2();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopAttack2();
-
 	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Block();
-
 	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopBlocking();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Duck();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopDucking();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void MoveMod();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopMoveMod();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void Taunt();
+	UFUNCTION(BlueprintCallable, Category = Behaviour)
 	void StopTaunt();
 	void ChangeCamera();
 	void SetTargetEnemy(AFightingCharacter* enemy);
 	void RotateToTarget(float DeltaTime);
-	AFightingCharacter* GetTargetEnemy();
 	float GetWeaponVelocity(UPrimitiveComponent* WeaponComponent);
 
 	UPROPERTY(BlueprintReadOnly, Category = Getter)
@@ -127,6 +134,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Getter)
 		FVector GetEnemyLocation();
+
+	UFUNCTION(BlueprintCallable, Category = Getter)
+		AFightingCharacter* GetTargetEnemy();
 
 	UFUNCTION(BlueprintCallable, Category = Getter)
 		float GetHealthPoints();
