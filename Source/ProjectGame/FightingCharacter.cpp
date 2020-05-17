@@ -170,6 +170,16 @@ void AFightingCharacter::Tick(float DeltaTime)
 		
 	}
 
+	/*if (bIsRunning && Camera2->IsActive()) {
+		FollowCamera->Activate();
+		Camera2->Deactivate();
+	}
+	else if(!bIsRunning && !Camera2->IsActive()) {
+		Camera2->Activate();
+		FollowCamera->Deactivate();
+	}*/
+
+
 	//Set Camera 2 location and rotation
 	if (IsPlayableChar && Camera2->IsActive() && TargetEnemy != NULL && ThisPlayerController != NULL) {
 		FVector ToTargetDirection = TargetEnemy->GetActorLocation() - GetActorLocation();
@@ -186,6 +196,9 @@ void AFightingCharacter::Tick(float DeltaTime)
 		Cam2LookAt.Z = 250;
 		Cam2Location.Z = 250;
 
+		//FRotator NextRotation = FMath::RInterpTo(GetActorRotation(), LookAt, DeltaTime, 2.0f);
+		
+		
 		Camera2->SetWorldLocation(Cam2Location);
 		ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
 		ThisPlayerController->SetControlRotation(ControllerRotation);

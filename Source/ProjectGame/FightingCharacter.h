@@ -275,7 +275,7 @@ protected:
 	bool bIsRunning;
 
 	float MaxWalkSpeed = 40.0f;
-	float MaxRunSpeed = 200.0f;
+	float MaxRunSpeed = 320.0f;
 
 	FVector Foot_R_Location;
 	FVector Foot_L_Location;
