@@ -481,6 +481,7 @@ void AFightingCharacter::PunchAttackStart()
 	RightFistLastPos = RightFistCollisionBox->GetComponentLocation();
 
 	RightFistVelocity_max = LeftFistVelocity_max = 0;
+	LastAttackImpactVel = LastAttackPoints = 0.0f;
 }
 
 void AFightingCharacter::PunchAttackEnd()
@@ -519,6 +520,7 @@ void AFightingCharacter::KickAttackStart()
 	RightFootLastPos = RightFootCollisionBox->GetComponentLocation();
 
 	RightFootVelocity_max = LeftFootVelocity_max = 0;
+	LastAttackImpactVel = LastAttackPoints = 0.0f;
 }
 
 void AFightingCharacter::KickAttackEnd()
@@ -731,7 +733,9 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 			HealthPoints = 0; 
 			bDefeated = true;
 		}
-		DamagePotential[hit_area] += PotentialIncrement;
+		if(PotentialIncrement * ImpactVel / 800 > PotentialIncrement)
+			DamagePotential[hit_area] += PotentialIncrement * ImpactVel / 800;
+		else DamagePotential[hit_area] += PotentialIncrement;
 		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
 		LastDamageTakenTime[hit_area] = current_time;
 
@@ -743,6 +747,9 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 		else if (hit_area.Equals(TEXT("right_arm"))) HitArmR = true;
 		else if (hit_area.Equals(TEXT("left_leg"))) HitLegL = true;
 		else if (hit_area.Equals(TEXT("right_Leg"))) HitLegR = true;
+
+		TargetEnemy->LastAttackPoints += (int)(damage_taken * 1000);
+		if (ImpactVel > TargetEnemy->LastAttackImpactVel) TargetEnemy->LastAttackImpactVel = ImpactVel;
 	}
 }
 

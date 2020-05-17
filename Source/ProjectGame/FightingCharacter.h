@@ -144,6 +144,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Getter)
 		float GetDamagePotential(FString bodypart);
 
+	UPROPERTY(BlueprintReadOnly, Category = Getter)
+		float LastAttackImpactVel = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = Getter)
+		int LastAttackPoints = 0;
+
 	/******************* Collision Boxes ************************/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Collision, meta = (AllowPrivateAccess = "true"))
@@ -211,6 +217,7 @@ public:
 	/* React Function */
 
 	void ReactionStart(AActor* attacker, UPrimitiveComponent* CollisionBox, float ImpactVel, FVector ImpactPoint, FString AttackName);
+	
 	UFUNCTION(BlueprintCallable, Category = React)
 		void ReactionEnd();
 
