@@ -10,7 +10,6 @@
 
 AMyGameMode::AMyGameMode() {
 	
-
 	PrimaryActorTick.bCanEverTick = true;
 }
 
@@ -26,14 +25,9 @@ void AMyGameMode::BeginPlay()
 	}
 	
 	if (HealthBar_Widget_Class != nullptr) {
-
 		HealthBar_Widget = CreateWidget(World, HealthBar_Widget_Class);
 		HealthBar_Widget->AddToViewport();
 	}
-	
-
-	//FTimerHandle UnusedHandle;
-	//GetWorldTimerManager().SetTimer(UnusedHandle, this, &AMyGameMode::SpawnPlayerRecharge, FMath::RandRange(2, 5), true);
 }
 
 void AMyGameMode::Tick(float DeltaTime)
@@ -43,13 +37,6 @@ void AMyGameMode::Tick(float DeltaTime)
 
 void AMyGameMode::SpawnEnemy()
 {
-	/*float RandX = FMath::RandRange(Spawn_X_Min, Spawn_X_Max);
-	float RandY = FMath::RandRange(Spawn_Y_Min, Spawn_Y_Max);
-
-	FVector SpawnPosition = FVector(RandX, RandY, Spawn_Z);
-	FRotator SpawnRotation = FRotator(0.0f, 0.0f, 0.0f);
-
-	GetWorld()->SpawnActor(PlaywerRecharge, &SpawnPosition, &SpawnRotation);*/
 	UWorld* World = GetWorld();
 
 	if (EnemyClass != NULL && World != NULL) {

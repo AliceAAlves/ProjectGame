@@ -7,7 +7,7 @@
 #include "KickAttackNotifyState.generated.h"
 
 /**
- * 
+ * A Notify State for kick animations to trigger when feet collision boxes collision profiles are set to Weapon
  */
 UCLASS()
 class PROJECTGAME_API UKickAttackNotifyState : public UAnimNotifyState

@@ -7,7 +7,7 @@
 #include "PunchAttackNotifyState.generated.h"
 
 /**
- * 
+ * A Notify State for punch animations to trigger when fists collision boxes collision profiles are set to Weapon
  */
 UCLASS()
 class PROJECTGAME_API UPunchAttackNotifyState : public UAnimNotifyState

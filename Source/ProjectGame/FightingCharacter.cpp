@@ -12,7 +12,7 @@
 
 #include "Engine.h"
 
-// Sets default values
+
 AFightingCharacter::AFightingCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -29,6 +29,7 @@ AFightingCharacter::AFightingCharacter()
 	GetCharacterMovement()->JumpZVelocity = 600.0f;
 	GetCharacterMovement()->AirControl = 0.2f;
 
+	// Initialising Cameras
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.0f;
@@ -47,24 +48,22 @@ AFightingCharacter::AFightingCharacter()
 	Camera2->bUsePawnControlRotation = true;
 
 	bDefeated = false;
-	//IsBlocking = false;
+	IsBlocking = false;
 
-	// Collision boxes
+	// Initialise collision boxes
 	CollisionBoxesInit();
 }
 
-// Called when the game starts or when spawned
 void AFightingCharacter::BeginPlay()
 {
 	Super::BeginPlay(); 
 
-	//AddControllerYawInput(-15);
-
+	// Activate Camera 2 (default Camera)
 	FollowCamera->Deactivate();
 	Camera2->Activate();
 
+	// Set the Camera Location as the Controller Rotation
 	ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
-
 	ThisPlayerController = UGameplayStatics::GetPlayerController(this, 0);
 	ThisPlayerController->SetControlRotation(ControllerRotation);
 
@@ -72,6 +71,7 @@ void AFightingCharacter::BeginPlay()
 
 	AttachCollisionBoxesToSockets();
 
+	// Set Collision events for Weapon Collision Boxes
 	for (UBoxComponent* weapon : WeaponCollisionBoxes) {
 		weapon->OnComponentHit.AddDynamic(this, &AFightingCharacter::OnAttackHit);
 		weapon->OnComponentBeginOverlap.AddDynamic(this, &AFightingCharacter::OnAttackOverlapBegin);
@@ -79,7 +79,6 @@ void AFightingCharacter::BeginPlay()
 	}
 
 	VariablesInit();
-
 }
 
 // Called every frame
@@ -89,7 +88,8 @@ void AFightingCharacter::Tick(float DeltaTime)
 
 	RotateToTarget(DeltaTime);
 
-	//Setting max speed on whether is running or not
+	// Setting max speed on whether is running or not
+	// If it's running character orients rotation to movement, but if it's only walking it does not
 	if (bIsRunning) {
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 		GetCharacterMovement()->MaxWalkSpeed = MaxRunSpeed;
@@ -102,24 +102,6 @@ void AFightingCharacter::Tick(float DeltaTime)
 		}
 		else GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 	}
-
-	//Reposition on Impact - THIS LOOKS LIKE SHITE
-	/*ImpactDirection = ImpactDirection.GetSafeNormal2D();
-	FVector newLocation = GetActorLocation() + ImpactDirection * (ImpactVelocity*0.01);
-	SetActorLocation(newLocation, true);
-	
-	//if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("ImpactDirection: %f, %f, %f"), ImpactDirection.X, ImpactDirection.Y, ImpactDirection.Z));
-	//if (ImpactVelocity > 0) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("ImpactVelocity: %f"), ImpactVelocity));
-
-	if(ImpactVelocity>0) ImpactVelocity -= ImpactDeceleration * DeltaTime;
-	if(ImpactVelocity<0) ImpactVelocity = 0;*/
-
-
-	/*if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
-		if (CanAttack) GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, TEXT("Can attack"));
-		else GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Red, TEXT("CanNOT attack"));
-	}*/
-	
 
 	// Tracking velocity of fists/foots when punching/kicking
 	if (bTrackFistsVelocity) {
@@ -138,7 +120,7 @@ void AFightingCharacter::Tick(float DeltaTime)
 		if (RightFistVelocity > RightFistVelocity_max) RightFistVelocity_max = RightFistVelocity;
 	}
 
-	if (bTrackFootsVelocity) {
+	if (bTrackFeetVelocity) {
 		FVector currentPos = LeftFootCollisionBox->GetComponentLocation();
 		LeftFootVelocity = (currentPos - LeftFootLastPos).Size() / DeltaTime;
 		LeftFootLastPos = currentPos;
@@ -161,22 +143,8 @@ void AFightingCharacter::Tick(float DeltaTime)
 			LastArmsOverlapTime = GetWorld()->GetTimeSeconds();
 	}
 
-	/*for (UBoxComponent* db : DamageCollisionBoxes) {
+	/*for (UBoxComponent* db : DamageCollisionBoxes) { // for debugging
 		GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("%s is overlapping"), *db->GetName()));
-	}*/
-
-	if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
-		
-		
-	}
-
-	/*if (bIsRunning && Camera2->IsActive()) {
-		FollowCamera->Activate();
-		Camera2->Deactivate();
-	}
-	else if(!bIsRunning && !Camera2->IsActive()) {
-		Camera2->Activate();
-		FollowCamera->Deactivate();
 	}*/
 
 
@@ -186,18 +154,20 @@ void AFightingCharacter::Tick(float DeltaTime)
 		float distance = ToTargetDirection.Size();
 		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("distance: %f"), distance));
 
+		// If character are very distanced from each other add a distanceOffset,
+		// so the camera is further away and both characters can been seen
 		float distanceOffset = 0.0f;
 		if (distance > 500.0f) {
 			distanceOffset = (distance - 500.0f)*0.5;
 		}
 
+		// Look At is middle point between the character and the target enemy
 		Cam2LookAt = GetActorLocation() + ToTargetDirection/2;
+
+		// Location is to the right of Cam2LookAt (90º angle with ToTargetDirection) at a (Cam2Distance + distanceOffset) distance
 		Cam2Location = Cam2LookAt + ToTargetDirection.RotateAngleAxis(90, FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal() * (Cam2Distance + distanceOffset);
 		Cam2LookAt.Z = 250;
-		Cam2Location.Z = 250;
-
-		//FRotator NextRotation = FMath::RInterpTo(GetActorRotation(), LookAt, DeltaTime, 2.0f);
-		
+		Cam2Location.Z = 250;		
 		
 		Camera2->SetWorldLocation(Cam2Location);
 		ControllerRotation = UKismetMathLibrary::FindLookAtRotation(Cam2Location, Cam2LookAt);
@@ -306,13 +276,14 @@ void AFightingCharacter::Attack1()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (CanAddNextComboAttack) {
 			if (IsDucking) ComboSequenceStr = TEXT("0");
+			// Move modifier is only effecitve if it's the beginning of a new sequence
 			else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("3");
-			else if (TauntPressed) { 
+			else if (TauntPressed) {
+				// Randomly chooses between two taunt animations
 				if( get_random_float() <= 0.50) ComboSequenceStr = TEXT("5");
 				else ComboSequenceStr = TEXT("55");
 			}
 			else ComboSequenceStr += TEXT("1");
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, ComboSequenceStr);
 			CanAddNextComboAttack = false;
 			CanMove = false;
 			CanBlock = false;
@@ -337,9 +308,11 @@ void AFightingCharacter::Attack2()
 	if (!bDefeated && CanAttack && !(GetCharacterMovement()->IsFalling())) {
 		if (CanAddNextComboAttack) { 
 			if (IsDucking) ComboSequenceStr = TEXT("0");
+			// Move modifier is only effecitve if it's the beginning of a new sequence
 			else if (MoveModPressed && ComboSequenceStr.Equals(TEXT(""))) ComboSequenceStr = TEXT("4");
 			else if (TauntPressed) {
-				if (get_random_float() <= 0.80) ComboSequenceStr = TEXT("6");
+				// Randomly chooses between two taunt animations
+				if (get_random_float() <= 0.90) ComboSequenceStr = TEXT("6");
 				else ComboSequenceStr = TEXT("66");
 			}
 			else ComboSequenceStr += TEXT("2");
@@ -515,7 +488,7 @@ void AFightingCharacter::KickAttackStart()
 	LeftLegCollisionBox->SetCollisionProfileName("Weapon");
 	RightLegCollisionBox->SetCollisionProfileName("Weapon");
 
-	bTrackFootsVelocity = true;
+	bTrackFeetVelocity = true;
 	LeftFootLastPos = LeftFootCollisionBox->GetComponentLocation();
 	RightFootLastPos = RightFootCollisionBox->GetComponentLocation();
 
@@ -536,7 +509,7 @@ void AFightingCharacter::KickAttackEnd()
 	LeftLegCollisionBox->SetCollisionProfileName("DamageBox");
 	RightLegCollisionBox->SetCollisionProfileName("DamageBox");
 
-	bTrackFootsVelocity = false;
+	bTrackFeetVelocity = false;
 
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Green, FString::Printf(TEXT("RightFootVelocity_max: %f"), RightFootVelocity_max));
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Orange, FString::Printf(TEXT("LeftFootVelocity_max: %f"), LeftFootVelocity_max));
@@ -547,67 +520,10 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 	Foot_R_Location = GetMesh()->GetSocketLocation("foot_r");
 	Foot_L_Location = GetMesh()->GetSocketLocation("foot_l");
 
-	FVector BoxCentre = CollisionBox->GetComponentLocation();
 	FString CollisionBoxName = CollisionBox->GetName();
 	FString hitArea = DamageCBCategory[CollisionBoxName];
 
-	FVector CentreToImpact = ImpactPoint - BoxCentre;
-
-	float cosForward = GetActorForwardVector().CosineAngle2D(CentreToImpact);
-	float cosRight = GetActorRightVector().CosineAngle2D(CentreToImpact);
-
-	bool front, right, left, back, small_hit, medium_hit, big_hit;
-	front = cosForward > 0.707;
-	back = cosForward < -0.707;
-	right = cosRight > 0.707;
-	left = cosRight < -0.707;
-
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact vel: %f"), ImpactVel));
-	if (ImpactVel < 400) small_hit = true;
-	else if (ImpactVel > 800) big_hit = true;
-	else medium_hit = true;
-
-	/*if (hitArea.Equals(TEXT("chest"))) {
-		if (ImpactPoint.Z > BoxCentre.Z) hitArea = TEXT("head");
-		else hitArea = TEXT("torso");
-	}
-	if (hitArea.Equals(TEXT("torso"))) {
-		if (back) Reaction = ReactType::Back;
-		else if (front) {
-			if (small_hit) Reaction = ReactType::Torso_FS;
-			else if(medium_hit) Reaction = ReactType::Torso_FM;
-			else if (big_hit) Reaction = ReactType::Torso_FB;
-		} 
-		else if (right) {
-			if (small_hit) Reaction = ReactType::Torso_RS;
-			else if (medium_hit) Reaction = ReactType::Torso_RM;
-			else if (big_hit) Reaction = ReactType::Torso_RB;
-		}
-		else if (left) {
-			if (small_hit) Reaction = ReactType::Torso_LS;
-			else if (medium_hit) Reaction = ReactType::Torso_LM;
-			else if (big_hit) Reaction = ReactType::Torso_LB;
-		}
-	}
-	else if (hitArea.Equals(TEXT("head"))) {
-		if (back) Reaction = ReactType::Back;
-		else if (front) {
-			if (small_hit) Reaction = ReactType::Face_FS;
-			else if (medium_hit) Reaction = ReactType::Face_FM;
-			else if (big_hit) Reaction = ReactType::Face_FB;
-		}
-		else if (right) {
-			if (small_hit) Reaction = ReactType::Face_RS;
-			else if (medium_hit) Reaction = ReactType::Face_RM;
-			else if (big_hit) Reaction = ReactType::Face_RB;
-		}
-		else if (left) {
-			if (small_hit) Reaction = ReactType::Face_LS;
-			else if (medium_hit) Reaction = ReactType::Face_LM;
-			else if (big_hit) Reaction = ReactType::Face_LB;
-		}
-	}*/
-
+	// Check if attacker is behind the character
 	FVector actorToAttacker = attacker->GetActorLocation() - GetActorLocation();
 	float cos = GetActorForwardVector().CosineAngle2D(actorToAttacker);
 	bool isAttackerBehindActor = cos < -0.35;
@@ -617,6 +533,8 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 	
 	if (hitArea.Equals(TEXT("head"))) {
 		//if (IsBlocking && isAttackerInFrontOfActor) return;
+		
+		// If the character is blocking and the arms have ovelapped in the last second, then don't react.
 		if (IsBlocking && current_time - LastArmsOverlapTime < 1.0) return;
 		else if (IsBlocking) StopBlocking();
 		if (isAttackerBehindActor) Reaction = ReactType::Back; 
@@ -667,6 +585,8 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 	}
 	else if (hitArea.Equals(TEXT("chest"))) {
 		//if (IsBlocking && isAttackerInFrontOfActor) return;
+
+		// If the character is blocking and the arms have ovelapped in the last second, then don't react.
 		if (IsBlocking && current_time - LastArmsOverlapTime < 1.0) return;
 		else if (IsBlocking) StopBlocking();
 		if (isAttackerBehindActor) Reaction = ReactType::Back;
@@ -680,6 +600,7 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 		}
 	}
 
+	// If a reaction was set then set other actions as not being able to be performed
 	if (Reaction != ReactType::NoReact) {
 		CanMove = false;
 		CanJump_ = false;
@@ -690,6 +611,7 @@ void AFightingCharacter::ReactionStart(AActor* attacker, UPrimitiveComponent* Co
 	
 }
 
+// Resetting actions that can be performed once a reaction animation ends
 void AFightingCharacter::ReactionEnd() {
 	Reaction = ReactType::NoReact;
 	CanMove = true;
@@ -706,25 +628,23 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 	FString hit_area = DamageCBCategory[CollisionBox->GetName()];
 	if (hit_area.IsEmpty()) return;
 
+	// If the character is blocking and the the hit arae is head or chest
+	// and the arms have ovelapped in the last second, then don't infliect damage.
 	if (IsBlocking && (hit_area.Equals(TEXT("chest")) || hit_area.Equals(TEXT("head")))) {
-		/*FVector actorToEnemy = TargetEnemy->GetActorLocation() - GetActorLocation();
-		float cos = GetActorForwardVector().CosineAngle2D(actorToEnemy);
-		bool isAttackerInFrontOfActor = cos > 0.35; 
-		if (isAttackerInFrontOfActor) return;*/
 		float current_time = GetWorld()->GetTimeSeconds();
-		if (current_time - LastArmsOverlapTime < 1.0) {
-			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("Successfull block ")));
-			return;
-		}
+		if (current_time - LastArmsOverlapTime < 1.0) return;
 	}
 
 	if (hit_area.Equals(TEXT("chest"))) hit_area = TEXT("torso");
 
 	float current_time = GetWorld()->GetTimeSeconds();
+
+	// Only inflict damage if it's been more than 0.5 seconds since the last time this hit area has damage received
 	if (current_time - LastDamageTakenTime[hit_area] > 0.5) {
 		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("Hit Area: %s (%s)"), *hit_area, *CollisionBox->GetName()));
 		//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Cyan, FString::Printf(TEXT("ImpactVel: %f "), ImpactVel)); 
 		
+		// Calculatinf damage taken based on ImpactVel and DamagePotential of the hit area
 		float base_damage = BaseDamage[hit_area];
 		float damage_multiplier = DamagePotential[hit_area];
 		float damage_taken = base_damage * damage_multiplier * ImpactVel/800;
@@ -733,8 +653,10 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 			HealthPoints = 0; 
 			bDefeated = true;
 		}
-		if(PotentialIncrement * ImpactVel / 800 > PotentialIncrement)
-			DamagePotential[hit_area] += PotentialIncrement * ImpactVel / 800;
+
+		// Increasing DamagePotential of the hit area, based on ImpactVel (min cap of PotentialIncrement)
+		if(PotentialIncrement * ImpactVel / 600 > PotentialIncrement)
+			DamagePotential[hit_area] += PotentialIncrement * ImpactVel / 600;
 		else DamagePotential[hit_area] += PotentialIncrement;
 		if (DamagePotential[hit_area] > 3) DamagePotential[hit_area] = 3;
 		LastDamageTakenTime[hit_area] = current_time;
@@ -756,20 +678,10 @@ void AFightingCharacter::InflictDamage(UPrimitiveComponent* CollisionBox, float 
 void AFightingCharacter::OnAttackHit(UPrimitiveComponent * HitComponent, AActor * OtherActor, UPrimitiveComponent * OtherComp, FVector NormalImpulse, const FHitResult & Hit)
 {
 	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, __FUNCTION__);
-
-	FVector impact_point = Hit.ImpactPoint;
-	float dist = Hit.Distance;
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("impact_point: %f, %f, %f"), impact_point.X, impact_point.Y, impact_point.Z));
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("dist: %f"), dist));
-
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, Hit.GetActor()->GetName());
-
 }
 
 void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, __FUNCTION__);
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
 	if (OtherActor != this && OtherActor != NULL) {
 		if (AFightingCharacter* enemy = Cast<AFightingCharacter>(OtherActor)) {
 			FString hitArea = DamageCBCategory[OtherComp->GetName()];
@@ -778,7 +690,6 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 		    // https://answers.unrealengine.com/questions/165523/on-component-begin-overlap-sweep-result-not-popula.html
 
 			TArray<FHitResult> AllResults;
-
 			FHitResult Hit;
 
 			// Get the location of this actor's overlapped component
@@ -803,13 +714,11 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 			}
 			/************************************/
 
-			enemy->IsDamageBoxOverlapping[OtherComp->GetName()] = true;
 			//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Blue, FString::Printf(TEXT("%s is overlapping"), *OtherComp->GetName()));
-			enemy->InflictDamage(OtherComp, GetWeaponVelocity(OverlappedComponent));
-			
-			enemy->ImpactVelocity = GetWeaponVelocity(OverlappedComponent);
-			enemy->ImpactDirection = GetActorForwardVector();
+			enemy->IsDamageBoxOverlapping[OtherComp->GetName()] = true;
 
+			// Inflict damage on enemy and start reaction for enemy
+			enemy->InflictDamage(OtherComp, GetWeaponVelocity(OverlappedComponent));
 			if(GetCurrentMontage() != NULL) enemy->ReactionStart(this, OtherComp, GetWeaponVelocity(OverlappedComponent), Hit.ImpactPoint, GetCurrentMontage()->GetName());
 		}
 	}
@@ -818,9 +727,6 @@ void AFightingCharacter::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedCom
 
 void AFightingCharacter::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, __FUNCTION__);
-	//GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, OtherActor->GetName());
-
 	if (OtherActor != this && OtherActor != NULL) {
 		if (AFightingCharacter* enemy = Cast<AFightingCharacter>(OtherActor)) {
 			enemy->IsDamageBoxOverlapping[OtherComp->GetName()] = false;
@@ -836,6 +742,7 @@ void AFightingCharacter::RotateToTarget(float DeltaTime) {
 		TargetLocation.Z = GetActorLocation().Z;
 		FRotator LookAt = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation);
 		
+		// Interpolate to desired rotation, so the change in rotation is gradual and not sudden
 		FRotator NextRotation = FMath::RInterpTo(GetActorRotation(), LookAt, DeltaTime, 2.0f);
 
 		SetActorRotation(NextRotation);
@@ -852,16 +759,17 @@ float AFightingCharacter::GetSpeedForAnimation(float delta_time)
 	float actual_speed = velocity.Size();
 	float accel = (actual_speed - speedForAnimation)/delta_time;
 
+	// If the acceleration of the actual speed is greater than the max acceleration allowed,
+	// then change speedForAnimation gradually
 	if (abs(accel) > max_accel) {
 		if (accel < 0) anim_accel = -anim_accel;
-
 		speedForAnimation += anim_accel * delta_time;
 	}
-	else
-	{
-		speedForAnimation = actual_speed;
-	}
+	else { speedForAnimation = actual_speed; }
 
+	// velocity.Size() is always positive, so the cos wih the forward vector is used to check if the character
+	// is moving backwards. If so animation must be set as negative
+	// (because the idle/walk Blend Space takes negative values for walking backwards)
 	float cosAngle = GetActorForwardVector().CosineAngle2D(GetVelocity());
 
 	if (cosAngle < 0) return -speedForAnimation;
@@ -892,7 +800,7 @@ FVector AFightingCharacter::GetTargetSocketLocation(FName SocketName)
 			}
 		}
 
-		/*if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) {
+		/*if (this == UGameplayStatics::GetPlayerPawn(GetWorld(), 0)) { // for debugging
 			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Magenta, FString::Printf(TEXT("SocketName: %s"), *SocketName.ToString()));
 			GEngine->AddOnScreenDebugMessage(-1, 4.5f, FColor::Yellow, FString::Printf(TEXT("TargetLocation.x: %f, y: %f, z: %f"), TargetLocation.X, TargetLocation.Y, TargetLocation.Z));
 		}*/
@@ -931,19 +839,15 @@ void AFightingCharacter::CollisionBoxesInit()
 
 	RightFistCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightFistCollisionBox"));
 	WeaponCollisionBoxes.push_back(RightFistCollisionBox);
-	WeaponCBCategory[RightFistCollisionBox->GetName()] = "punch";
 
 	LeftFistCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftFistCollisionBox"));
 	WeaponCollisionBoxes.push_back(LeftFistCollisionBox);
-	WeaponCBCategory[LeftFistCollisionBox->GetName()] = "punch";
 
 	RightFootCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightFootCollisionBox"));
 	WeaponCollisionBoxes.push_back(RightFootCollisionBox);
-	WeaponCBCategory[RightFootCollisionBox->GetName()] = "kick";
 
 	LeftFootCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftFootCollisionBox"));
 	WeaponCollisionBoxes.push_back(LeftFootCollisionBox);
-	WeaponCBCategory[LeftFootCollisionBox->GetName()] = "kick";
 
 	/** Damage Collision Boxes**/
 
@@ -987,7 +891,6 @@ void AFightingCharacter::CollisionBoxesInit()
 	DamageCollisionBoxes.push_back(RightLegCollisionBox);
 	WeaponCollisionBoxes.push_back(RightLegCollisionBox);
 	DamageCBCategory[RightLegCollisionBox->GetName()] = "right_leg";
-	WeaponCBCategory[RightLegCollisionBox->GetName()] = "kick";
 
 	LeftThighCollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftThighCollisionBox"));
 	DamageCollisionBoxes.push_back(LeftThighCollisionBox);
@@ -997,7 +900,6 @@ void AFightingCharacter::CollisionBoxesInit()
 	DamageCollisionBoxes.push_back(LeftLegCollisionBox);
 	WeaponCollisionBoxes.push_back(LeftLegCollisionBox);
 	DamageCBCategory[LeftLegCollisionBox->GetName()] = "left_leg";
-	WeaponCBCategory[LeftLegCollisionBox->GetName()] = "kick";
 	
 
 	for (UBoxComponent* element : WeaponCollisionBoxes)
