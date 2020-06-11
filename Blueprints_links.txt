@@ -1,0 +1,39 @@
+/***** BLUEPRINTS *****/
+Follow to the links bellow to view the blueprints without Unreal Engine
+
+/*** MyGameMode_BP
+ * Event Graph: https://blueprintue.com/blueprint/u4nj67ru/
+ * Hit Widget Animation function: https://blueprintue.com/blueprint/eno4du45/
+
+/*** FightingCharacter_BP
+ * Is Playing Attack Animation function: https://blueprintue.com/blueprint/3rchayka/
+
+/*** FightingCharacter_BP_Enemy
+ * Event Graph: https://blueprintue.com/blueprint/duvjs3no/
+
+/*** FightingCharacterAnim_BP
+ * AnimGraph: https://blueprintue.com/blueprint/m7mpm5ba/
+ * Event Graph: https://blueprintue.com/blueprint/07ea8kk5/
+ * Set Direction function: https://blueprintue.com/blueprint/p2biixze/
+ * Set Speed function: https://blueprintue.com/blueprint/p8kqlcyd/
+ * Fix Position function: https://blueprintue.com/blueprint/fm44a0-h/
+ * Attack Info to UI function: https://blueprintue.com/blueprint/e9kpmha4/
+
+/*** HealthBar_UI
+ * Get Player Health function: https://blueprintue.com/blueprint/w2bvjfwg/
+ * Get Player Body Part Color function: https://blueprintue.com/blueprint/3_yibhql/
+ * Get Health Bar Color function: https://blueprintue.com/blueprint/oi7dtwu1/
+ * Get Player Velocity Text: https://blueprintue.com/blueprint/j11xed3q/
+ * Get Player Points Text: https://blueprintue.com/blueprint/bljwjfx-/
+ * Play Hit Animation: https://blueprintue.com/blueprint/r24amjwk/
+
+/*** AI Behaviour Tree Tasks
+ * Chase Player: https://blueprintue.com/blueprint/kbm9d6xz/
+ * Find Next Action: https://blueprintue.com/blueprint/-f71iavh/
+ * Attack: https://blueprintue.com/blueprint/60dowczp/
+ * Block: https://blueprintue.com/blueprint/d35hro9b/
+ * Stop Blocking: https://blueprintue.com/blueprint/5l_gmady/
+ * Duck: https://blueprintue.com/blueprint/fy-m0pyo/
+ * Stop Ducking: https://blueprintue.com/blueprint/ee4uybk7/
+
+The website does not support Behaviour Tree blueprints, so a screenshot of the AI Behaviour Tree can be found in the same folder as this file called "BehaviourTree.png"

@@ -5,10 +5,12 @@ were at least in part obtained through motion capture.
 
 The game was developed with Unreal Engine 4 as a C++ based game.
 
+Printscreens and videos of the game can be consulted in folder "Printscreens and video"
+
 ## Prerequisites
 
 The project requires Unreal Engine 4 software to be run.
-Unreal prjoject file: ProjectGame.uproject
+Unreal project file: ProjectGame.uproject
 
 ## Consulting source code
 
@@ -21,17 +23,27 @@ All character assets (meshes and animation) are in Content > Character
 
 ## Game Controls
 
-Action 			PC 		PS4
-Move Character 	    WASD keys 	left analog stick
-Jump 			K		X
-Attack 1 		J	      square
-Attack 2  		I	     triangle
-Duck 			L 	      circle
-Block 			Q 		L2
-Run 			O 		R2
-Alternative move* 	E 		L1
-Taunt* 		   shift key		R1
-Move Camera      mouse movement  right analog stick
+Action: 		PC  		/ PS4
+
+Move Character: 	    WASD keys 	/ left analog stick
+
+Jump: 			K 		/ X
+
+Attack 1: 		J 	      / square
+
+Attack 2:  		I 	     / triangle
+
+Duck:			L  	      / circle
+
+Block:			Q  		/ L2
+
+Run: 			O  		/ R2
+
+Alternative move*: 	E  		/ L1
+
+Taunt*: 	   shift key 		/ R1
+
+Move Camera:      mouse movement   / right analog stick
 
 *Attack 1 or 2 must be pressed while Alternative move/Taunt are being pressed to actually perform an Alternative move/Taunt
 
